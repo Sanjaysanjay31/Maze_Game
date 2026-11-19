@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Spider Maze</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@700;800&display=swap">
+<link rel="stylesheet" href="style.css"></head><body>
+<div id="frame">
+<div id="top"><div id="cast" aria-label="Characters in this level"></div><div id="stats"><div class="pill">★ <b id="sc">0</b>/<span id="tot"></span></div><div class="pill" id="tm">0.0s</div><button class="pill ib" id="sd" aria-label="Sound" aria-pressed="true"></button><button class="pill ib" id="mn" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><button class="pill ib" id="rs" aria-label="Restart level"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 3-6.2M4 4v5h5"/></svg></button></div></div>
+<div id="stage"><canvas id="c" aria-label="Spider Maze game board"></canvas><div id="toast" role="status" aria-live="polite"></div>
+<div id="pad"><button id="u" aria-label="Up" style="grid-area:1/2">▲</button><button id="l" aria-label="Left" style="grid-area:2/1">◀</button><button id="d" aria-label="Down" style="grid-area:3/2">▼</button><button id="r" aria-label="Right" style="grid-area:2/3">▶</button></div></div>
+<div id="ov"><div id="card"><img id="face" alt="Spider-Man"><h1 id="ot">Spider Maze</h1><div id="st"></div><p id="om">Hold an arrow key or drag on the screen to run, and let go to stop. Collect the stars, grab a shield before the blades, and reach the green exit.</p>
+<fieldset id="rt"><legend>Screen shape</legend><label><input type="radio" name="ra" value="9:16"><span><i class="p"></i>Portrait 9:16</span></label><label><input type="radio" name="ra" value="16:9"><span><i class="l"></i>Landscape 16:9</span></label></fieldset>
+<ul id="lg" aria-label="Map legend"><li><b style="background:#d6dce8"></b>Blade</li><li><b style="background:#ff7a1a"></b>Wall blade</li><li><b style="background:#ff2d44"></b>Laser</li><li><b style="background:#58b8ff"></b>Shield</li><li><b style="background:#19b94a"></b>Health</li><li><b style="background:#2bd9a4"></b>Exit</li></ul><button id="go">Play</button></div></div></div>
+<script src="assets.js"></script>
+<script src="levels/level1.js"></script>
+<!-- add more levels here, e.g. <script src="levels/level2.js"></script> -->
+<script src="audio/audio-data.js"></script>
+<script src="audio/audio.js"></script>
+<script src="vfx/vfx.js"></script>
+<script src="game.js"></script></body></html>
