@@ -1,35 +1,80 @@
-# Spider Maze
+# Spider-Man Arcade Maze Game
 
-Open `index.html` in a browser (double-click). Fonts load from Google Fonts when online and fall back to system fonts offline.
+An arcade-style 2D physics maze escape game built with HTML5 Canvas, Web Audio API, and custom vector/sprite animations. Optimized specifically for **YouTube Shorts (9:16 vertical video)** and long-form **YouTube landscape video (16:9)** on the channel **Global Games with SK**.
 
-## Files
-- `index.html`, `style.css` – page, start menu (9:16 or 16:9) and styling.
-- `game.js` – the engine. It is level-independent: it plays whatever is in `window.LEVELS`.
-- `assets.js` – character images by name.
-- `levels/level1.js` – Level 1 data. More levels are added the same way.
-- `tools/make_level.py` – makes a new level file (needs Python 3).
-- `assets/spider.png` – the Spider-Man tile.
-- `audio/` – `audio.js` (sound engine), `sfx/*.wav` (17 sound effects), `music/calm.wav` and `music/action.wav` (adaptive music loop), `audio-data.js` (generated bundle used by the game).
-- `vfx/vfx.js` – all visual effects (dust cloud, star burst, rings, plus signs, floating text, confetti, flashes).
+---
 
-## Controls
-Hold an arrow key or WASD to run and let go to stop. On touch screens press and drag on the maze (or hold the arrow pad). Sound can be switched off with the speaker button.
+## 🎮 Key Features & Recent Enhancements
 
-## Add a new level
-1. `cd tools`
-2. `python3 make_level.py --name "Level 2" --cols 8 --rows 15 --lasers 4 --saws 4 --wall-blades 4 --friends spiderman --enemies venom --out ../levels/level2.js`
-3. Add `<script src="levels/level2.js"></script>` after level1 in `index.html`. After Level 1 the game offers "Next level".
+1. **YouTube Shorts Copyright-Safe Audio Architecture**:
+   - **Zero Embedded Background Music**: To prevent automated YouTube Content ID global blocks (such as copyright claims on commercial tracks like *NO BATIDÃO* by ZXKAI), the game engine runs in **SFX-Only Mode**.
+   - **Boosted Sound Effects (+50% to +85% RMS Volume)**: Hit attacks (`hit.wav`), health pickups (`heal.wav`), stage wins (`win.wav`), shields (`shield.wav`), and star pickups (`coin.wav`) are mastered with high gain and routed through a Web Audio dynamic compressor limiter (`threshold: -3dB`, `ratio: 12`, `attack: 2ms`) to punch through loud background music when you add trending music via YouTube's official **"Add sound"** button.
 
-Options: `--cols --rows --lasers --saws --wall-blades --shields --heals --seed`. Use `--seed N` to keep a layout you like.
+2. **9:16 Recording Frame & Dimension Control**:
+   - High-definition vertical resolution with a hard minimum constraint of **495 × 880 px** (exact 9:16 integer multiple: $55 \times 9 = 495, 55 \times 16 = 880$).
+   - Sharp $90^\circ$ square white outer recording boundary (`border: 3.5px solid #ffffff`) for pixel-perfect cropping and screen recording in OBS / screen capture tools.
 
-## Characters on the top bar
-Each level lists its characters (1 to 6 in total). Friends are shown on the left and enemies on the right. "VS" appears only when both sides exist: one character, or only friends, shows no "VS".
-Put each name in `assets.js` with an image. Enemies patrol back and forth and cost health on contact. A character that is out of health gets a red cross.
+3. **Optimized Character Scale & Corridor Clearance**:
+   - Spider-Man player token scale set to $S = 1.95B$ within $3.0B$ corridors, guaranteeing $>0.5B$ clear margin on both sides with zero wall clipping or overlap artifacts.
+   - 3D beveled metallic blue wall blocks with corner rivets and diagonal interior accent lines.
 
-## Hazards and pickups
-Blades patrol corridors. Wall blades slide out of a wall, go through it and come out in the next corridor, so wait until they are gone. Lasers switch on and off. Green + gives health. A blue shield blocks all damage for 8 seconds. Health bar colours: green 61 to 100, yellow 31 to 60, red 1 to 30.
+4. **Channel Header & HUD**:
+   - Prominent Spider-Man avatar badge ($88\text{px}$).
+   - Channel brand title: **Global Games** in solid black (`#000000`), **SK** in vivid arcade red (`#ff2233`).
+   - Clean star counter displaying strictly collected stars out of 15 (`★ 0 / 15`).
 
-## Sound and effects
-- The sounds are synthesised by `tools/make_audio.py` (needs numpy and scipy). Edit a function, run `python3 make_audio.py`, and it rewrites the WAV files and `audio/audio-data.js`. You can also replace any WAV with your own recording of the same name and run the script's bundling step (see `build()`), or just re-run after swapping files.
-- Stars play a rising scale when you collect them quickly. Blades, wall blades and lasers get louder and pan left or right as you get close. The music is calm when Spider-Man stands still and becomes energetic when he runs. A heartbeat and red screen edge warn you at 1 health.
-- `vfx/vfx.js` works in any level: `VFX.add("ring", x, y, T)`, `VFX.text(x, y, "+1", T)`, `VFX.flash("255,40,60", T)`.
+---
+
+## 📹 YouTube Shorts Upload & Audio Workflow (Zero Copyright Strike Method)
+
+To get viral reach and avoid copyright blocks on YouTube Shorts:
+1. **Screen Record Gameplay**:
+   - Align your screen recording software (OBS, phone screen recorder, or desktop capture) to the white square border of the game.
+   - Record the video with in-game sound effects (SFX) enabled.
+2. **Upload via YouTube App / YouTube Studio**:
+   - On mobile: Tap **+** $\rightarrow$ **Create a Short** $\rightarrow$ select your recorded video.
+   - Tap **"Add sound"** at the top.
+   - Search for **"NO BATIDÃO"** (or any trending audio on YouTube).
+   - In the volume settings, set:
+     - **Original Audio (Game SFX)**: 90% – 100%
+     - **Added Sound (Background Music)**: 40% – 60%
+   - This ensures full monetization and 100% immunity from Content ID blocks because YouTube pays the music license directly to the artist.
+
+---
+
+## 📝 Viral YouTube Shorts Metadata (Copy & Paste)
+
+### Title Options:
+1. `Can Spider-Man Escape The Impossible Saw Blade Maze? 😱🕷️ #shorts`
+2. `Only 1% Can Collect All 15 Stars! ⭐️ Spider-Man Maze Escape #gaming`
+3. `Spider-Man vs Death Lasers! 💀⚡️ Will He Make It Out Alive? #shorts`
+
+### Video Description:
+```text
+Can Spider-Man survive the deadly spinning saw blades, electric lasers, and wall traps to collect all 15 stars and escape? Watch till the end to find out! 🕷️⚡️
+
+🎮 Game: Spider-Man Arcade Maze
+👤 Channel: Global Games with SK
+⭐️ Target: Collect 15 Stars & Reach the Goal
+
+🔔 Subscribe to Global Games with SK for more intense gaming challenges, arcade mazes, and superhero action every single day!
+👍 Like, Share, and Comment your favorite part below!
+
+#SpiderMan #MazeGame #GamingShorts #Arcade #GlobalGamesWithSK #MobileGaming #TrendingShorts #GamingChallenge #GamingCommunity #Shorts
+```
+
+### Tags:
+`spiderman, maze game, spiderman maze, arcade game, gaming shorts, global games with sk, impossible maze, spiderman game, shorts, viral gaming, mobile games, escape maze, obstacle course`
+
+---
+
+## 🛠️ Project File Structure
+- `index.html`: Main HTML entry with responsive viewport and overlay screens.
+- `style.css`: Clean arcade styling, 9:16 square recording border, typography, and HUD styling.
+- `game.js`: Core physics, collision detection, corridor pathfinding, and rendering pipeline.
+- `assets.js`: Base64 and vector asset registry.
+- `levels/level1.js`: Level 1 layout data (15 stars, wall blades, circular saws, lasers, health bubbles, shields).
+- `audio/audio.js`: Web Audio API SFX engine with dynamics compression and spatial panning.
+- `audio/audio-data.js`: Bundled base64 audio data for SFX.
+- `tools/make_audio.py`: Procedural audio generation script.
+- `tools/make_level.py`: Python CLI tool for generating procedural maze layouts.

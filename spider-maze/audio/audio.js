@@ -12,10 +12,10 @@ const GameAudio = (() => {
     if (ac) return ac;
     const C = window.AudioContext || window.webkitAudioContext; if (!C) return null;
     ac = new C();
-    const lim = ac.createDynamicsCompressor(); lim.threshold.value = -14; lim.knee.value = 12; lim.ratio.value = 5; lim.attack.value = .004; lim.release.value = .2;
+    const lim = ac.createDynamicsCompressor(); lim.threshold.value = -3; lim.knee.value = 6; lim.ratio.value = 12; lim.attack.value = .002; lim.release.value = .08;
     master = ac.createGain(); master.gain.value = on ? 1 : 0; master.connect(lim); lim.connect(ac.destination);
-    sfxBus = ac.createGain(); sfxBus.gain.value = .9; sfxBus.connect(master);
-    musBus = ac.createGain(); musBus.gain.value = .85; musBus.connect(master);
+    sfxBus = ac.createGain(); sfxBus.gain.value = 1.35; sfxBus.connect(master);
+    musBus = ac.createGain(); musBus.gain.value = 0; musBus.connect(master);
     return ac;
   }
   const b64 = s => { const b = atob(s), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u.buffer; };
@@ -35,18 +35,16 @@ const GameAudio = (() => {
     o = o || {}; if (!on || !ac || !buf[n]) return null;
     const t = ac.currentTime; if (o.min && t - (last[n] || -9) < o.min) return null; last[n] = t;
     const s = ac.createBufferSource(), g = ac.createGain();
-    s.buffer = buf[n]; s.playbackRate.value = (o.rate || 1) * (o.rand ? 1 + (Math.random() - .5) * o.rand : 1); g.gain.value = o.vol == null ? 1 : o.vol; s.connect(g);
+    s.buffer = buf[n]; s.playbackRate.value = (o.rate || 1) * (o.rand ? 1 + (Math.random() - .5) * o.rand : 1);
+    g.gain.value = (o.vol == null ? 1 : o.vol) * (n === "hit" ? 1.85 : n === "win" ? 1.85 : n === "heal" ? 1.75 : n === "shield" || n === "shield_block" ? 1.6 : 1.25);
+    s.connect(g);
     let out = g; if (o.pan && ac.createStereoPanner) { const p = ac.createStereoPanner(); p.pan.value = clamp(o.pan, -1, 1); g.connect(p); out = p; }
     out.connect(sfxBus); s.start();
-    if (n === "hit") duck(1.4);
-    else if (n === "win" || n === "lose") duck(3.0);
-    else if (n !== "heartbeat") duck(o.duck || 0.5);
     return s;
   }
   function coin() {
     const t = ac ? ac.currentTime : 0; combo.n = t - combo.t < 1.25 ? Math.min(combo.n + 1, SC.length - 1) : 0; combo.t = t;
-    duck(0.55);
-    play("coin", { rate: Math.pow(2, SC[combo.n] / 12), vol: .95 + .03 * combo.n });
+    play("coin", { rate: Math.pow(2, SC[combo.n] / 12), vol: 1.25 + .03 * combo.n });
   }
   function loop(id, n, rate) {
     if (loops[id] || !ac || !buf[n]) return loops[id];
@@ -71,25 +69,9 @@ const GameAudio = (() => {
     });
     if (f.hp === 1) { loop("hb", "heartbeat", 1); setLoop("hb", .8, 0); } else if (loops.hb) setLoop("hb", 0, 0);
   }
-  function musicStart() {
-    if (!ac || mus) return;
-    const track = buf.m_original || buf.m_action || buf.m_calm;
-    if (!track) return;
-    const t = ac.currentTime + .06;
-    const s = ac.createBufferSource(), g = ac.createGain();
-    s.buffer = track; s.loop = true; g.gain.value = 1.0;
-    s.connect(g); g.connect(musBus); s.start(t);
-    mus = { s, g };
-  }
-  function musicStop() {
-    if (mus) {
-      const t = ac.currentTime, m = mus; mus = null;
-      m.g.gain.setTargetAtTime(0, t, .12);
-      setTimeout(() => { try { m.s.stop(); } catch (e) {} }, 400);
-    }
-    stopLoops();
-  }
-  function duck(sec) { if (!ac) return; const t = ac.currentTime; musBus.gain.cancelScheduledValues(t); musBus.gain.setTargetAtTime(.05, t, .03); musBus.gain.setTargetAtTime(.85, t + (sec || .5), .35); }
+  function musicStart() {}
+  function musicStop() { stopLoops(); }
+  function duck() {}
   function toggle() { on = !on; try { localStorage.setItem("sm_snd", on ? "1" : "0"); } catch (e) {} if (master) master.gain.setTargetAtTime(on ? 1 : 0, ac.currentTime, .05); return on; }
   document.addEventListener("visibilitychange", () => { if (ac) { if (document.hidden) ac.suspend(); else ac.resume(); } });
   return { begin, play, coin, frame, musicStart, musicStop, duck, toggle, stopLoops, get on() { return on; }, get combo() { return combo.n + 1; } };
