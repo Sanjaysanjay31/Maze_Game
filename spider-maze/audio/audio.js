@@ -70,15 +70,23 @@ const GameAudio = (() => {
       prev[id] = l[2];
     });
     if (f.hp === 1) { loop("hb", "heartbeat", 1); setLoop("hb", .8, 0); } else if (loops.hb) setLoop("hb", 0, 0);
-    if (mus) { const t = ac.currentTime, v = f.moving ? 1 : .12; mus.cg.gain.setTargetAtTime((1.35 - .9 * v) * (f.hp === 1 ? 1.1 : 1), t, .5); mus.ag.gain.setTargetAtTime(v, t, .35); }
   }
   function musicStart() {
-    if (!ac || mus || !buf.m_calm || !buf.m_action) return;
-    const t = ac.currentTime + .08, mk = (n, g0) => { const s = ac.createBufferSource(), g = ac.createGain(); s.buffer = buf[n]; s.loop = true; g.gain.value = g0; s.connect(g); g.connect(musBus); s.start(t); return { s, g }; };
-    const c = mk("m_calm", 0), a = mk("m_action", 0); mus = { cs: c.s, as: a.s, cg: c.g, ag: a.g }; c.g.gain.setTargetAtTime(1.2, t, .4);
+    if (!ac || mus) return;
+    const track = buf.m_original || buf.m_action || buf.m_calm;
+    if (!track) return;
+    const t = ac.currentTime + .06;
+    const s = ac.createBufferSource(), g = ac.createGain();
+    s.buffer = track; s.loop = true; g.gain.value = 1.0;
+    s.connect(g); g.connect(musBus); s.start(t);
+    mus = { s, g };
   }
   function musicStop() {
-    if (mus) { const t = ac.currentTime, m = mus; mus = null; m.cg.gain.setTargetAtTime(0, t, .15); m.ag.gain.setTargetAtTime(0, t, .15); setTimeout(() => { try { m.cs.stop(); m.as.stop(); } catch (e) {} }, 900); }
+    if (mus) {
+      const t = ac.currentTime, m = mus; mus = null;
+      m.g.gain.setTargetAtTime(0, t, .12);
+      setTimeout(() => { try { m.s.stop(); } catch (e) {} }, 400);
+    }
     stopLoops();
   }
   function duck(sec) { if (!ac) return; const t = ac.currentTime; musBus.gain.cancelScheduledValues(t); musBus.gain.setTargetAtTime(.05, t, .03); musBus.gain.setTargetAtTime(.85, t + (sec || .5), .35); }

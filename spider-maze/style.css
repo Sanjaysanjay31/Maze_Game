@@ -4,7 +4,7 @@
 :root[data-theme="dark"]{--panel:#13286a;--ink:#fff2c8}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;overflow:hidden;background:var(--bg) repeating-linear-gradient(45deg,transparent 0 22px,rgba(255,255,255,.025) 22px 44px);font-family:var(--body);color:var(--pill-ink)}
-#frame{--u:1;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;gap:calc(6px*var(--u));padding:calc(8px*var(--u));overflow:hidden;border-radius:0;background:#0a1236;border:3.5px solid #ffffff;box-shadow:0 0 0 2px #0a1236,0 16px 48px rgba(0,0,0,.85)}
+#frame{--u:1;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;gap:calc(6px*var(--u));padding:calc(8px*var(--u));overflow:hidden;border-radius:0;background:#0a1236;border:3.5px solid #ffffff;min-width:495px;min-height:880px;box-shadow:0 0 0 2px #0a1236,0 16px 48px rgba(0,0,0,.85)}
 #stage{position:relative;flex:1;min-height:0;border-radius:calc(14px*var(--u));border:3px solid var(--gold);box-shadow:0 4px 16px rgba(0,0,0,.45);overflow:hidden;background:#123}
 canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:default}
 #frame.playing canvas{cursor:none}
@@ -15,8 +15,8 @@ button:focus-visible,input:focus-visible+span{outline:3px solid #fff;outline-off
 #top-actions{display:flex;align-items:center;gap:calc(6px*var(--u))}
 #cast{display:flex;gap:calc(8px*var(--u));align-items:center;flex:0 1 auto;min-width:0}
 .ct{position:relative;flex:0 0 calc(66px*var(--u));width:calc(66px*var(--u));aspect-ratio:1;border-radius:calc(12px*var(--u));border:2px solid #283e82;overflow:hidden;background:#0c1844;box-shadow:0 4px 10px rgba(0,0,0,.5);transition:transform .2s ease,border-color .2s}
-.ct.solo{flex:0 0 calc(98px*var(--u));width:calc(98px*var(--u));border-radius:calc(16px*var(--u));border:2.5px solid #334d99;box-shadow:0 8px 22px rgba(0,0,0,.65)}
-.ct img{width:100%;height:100%;display:block;object-fit:cover;transform:scale(1.26)}
+.ct.solo{flex:0 0 calc(88px*var(--u));width:calc(88px*var(--u));border-radius:calc(15px*var(--u));border:2.5px solid #334d99;box-shadow:0 6px 16px rgba(0,0,0,.6)}
+.ct img{width:100%;height:100%;display:block;object-fit:cover;transform:scale(1.22)}
 #brand-strip{display:flex;align-items:center;justify-content:space-between;width:100%;background:#ffffff;padding:calc(5px*var(--u)) calc(12px*var(--u));border-radius:calc(10px*var(--u));box-shadow:0 3px 12px rgba(0,0,0,.4)}
 #channel-title{flex:0 0 70%;max-width:72%;font:900 calc(18px*var(--u))/1.1 var(--display);letter-spacing:.02em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cn-main{color:#000000;font-weight:900}
