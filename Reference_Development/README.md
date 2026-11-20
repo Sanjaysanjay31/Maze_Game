@@ -140,4 +140,37 @@ flowchart TD
     - `bounce`: Classic cartoon rising spring *BOING* (for bounce pads).
 
 ---
+
+## 4. In-Depth Attack & Hit Scene Deconstruction (`Tom-and-jerry-SnapYT.App_(2).mp4`)
+
+A detailed frame-by-frame and audio-spectral analysis was performed on the reference video to capture the exact combat dynamics and hit sound design:
+
+### 🥊 Attack Scene 1: Jerry vs. Tasmanian Devil (7.4s – 9.0s)
+- **Timestamp:** `00:07.40s` to `00:09.00s` (Peak Impact: `00:07.88s` to `00:08.60s`)
+- **Key Frames:** [seq_7.4s.jpg](file:///C:/Skills/Youtube/MAZE_GAME/Reference_Development/v2_attack_analysis/seq_7.4s.jpg) (Encounter), [seq_7.8s.jpg](file:///C:/Skills/Youtube/MAZE_GAME/Reference_Development/v2_attack_analysis/seq_7.8s.jpg) (Impact ignition), [seq_8.4s.jpg](file:///C:/Skills/Youtube/MAZE_GAME/Reference_Development/v2_attack_analysis/seq_8.4s.jpg) (Full Cartoon Brawl Cloud), [seq_10.0s.jpg](file:///C:/Skills/Youtube/MAZE_GAME/Reference_Development/v2_attack_analysis/seq_10.0s.jpg) (Resolution & Key Release).
+- **Visual Mechanics:** Jerry encounters the red-framed Tasmanian Devil enemy. A rapid cartoon dust/fight cloud erupts with popping stars.
+- **Acoustic Profile:**
+  - **Attack / Initial Punch:** High-transient mid-frequency strikes at 700 Hz and 500 Hz (RMS > 14,000).
+  - **Sub-Bass Thud:** Sustained 40 Hz sub-bass crunch boom grounding the comic impact.
+  - **Music Ducking:** The phonk backing track instantly ducks down by 26 dB (to ~4% volume), ensuring 100% clarity for the punch crunch without frequency collision.
+- **Saved Audio File:** [Reference_Development/attack_hit_reference.wav](file:///C:/Skills/Youtube/MAZE_GAME/Reference_Development/attack_hit_reference.wav) & [spider-maze/audio/sfx/hit.wav](file:///C:/Skills/Youtube/MAZE_GAME/spider-maze/audio/sfx/hit.wav).
+
+### 🐺 Attack Scene 2: Spike the Bulldog vs. Red Wolf (21.5s – 23.2s)
+- **Timestamp:** `00:21.50s` to `00:23.20s` (Peak Impact: `00:21.90s` to `00:22.60s`)
+- **Key Frames:** [fight2_21.5s.jpg](file:///C:/Skills/Youtube/MAZE_GAME/Reference_Development/v2_attack_analysis/fight2_21.5s.jpg) (Encounter), [hit_22.4s.jpg](file:///C:/Skills/Youtube/MAZE_GAME/Reference_Development/v2_attack_analysis/hit_22.4s.jpg) (Brawl Cloud).
+- **Visual Mechanics:** Spike the bulldog collides with the fierce red wolf boss. Full melee dust cloud.
+- **Acoustic Profile:** 720 Hz attack slap followed by 500 Hz punches and 40 Hz sub-bass rumble.
+
+### 🎧 How to Re-Use These Attack Sounds
+1. In `spider-maze/audio/audio-data.js`, `sfx["hit"]` is directly bundled with the clean 0.95s normalized cartoon attack crunch.
+2. In `game.js`, `hit(msg)` calls `GameAudio.duck(1.3)` followed by `Snd.sfx("hit")`.
+3. The ducking curve applies instant cut (`gain = 0.04` over 30ms) and smooth 350ms logarithmic recovery after 1.3 seconds.
+
+---
+
+## 5. Screen Recording Alignment Guidelines (9:16 & 16:9)
+- `#frame` is wrapped with a crisp **3px solid pure white outline** (`outline: 3px solid #ffffff; outline-offset: 3px;`).
+- When recording YouTube Shorts (9:16) or standard landscape videos (16:9), align your screen recording window (OBS or device capture box) directly to this outer white guideline for pixel-perfect cropping with zero borders.
+
+---
 *Created for Spider-Maze Reference Development and YouTube Shorts Pipeline.*

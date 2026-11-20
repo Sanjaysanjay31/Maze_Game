@@ -38,7 +38,8 @@ const GameAudio = (() => {
     s.buffer = buf[n]; s.playbackRate.value = (o.rate || 1) * (o.rand ? 1 + (Math.random() - .5) * o.rand : 1); g.gain.value = o.vol == null ? 1 : o.vol; s.connect(g);
     let out = g; if (o.pan && ac.createStereoPanner) { const p = ac.createStereoPanner(); p.pan.value = clamp(o.pan, -1, 1); g.connect(p); out = p; }
     out.connect(sfxBus); s.start();
-    if (n !== "heartbeat") duck(o.duck || 0.4);
+    if (n === "hit") duck(1.3);
+    else if (n !== "heartbeat") duck(o.duck || 0.4);
     return s;
   }
   function coin() {
@@ -59,14 +60,8 @@ const GameAudio = (() => {
   function stopLoops() { for (const k in loops) { try { loops[k].s.stop(); } catch (e) {} } loops = {}; prev = {}; }
   /* called every frame while playing: f = {px,py,moving,hp,saws:[[x,y]],wsaws:[[x,y,moving]],lasers:[[x,y,on]]} (block coordinates) */
   function frame(f) {
-    if (!ac || !buf.saw_loop) return;
+    if (!ac) return;
     const near = (x, y, R) => { const dx = x - f.px, dy = y - f.py; return [Math.pow(Math.max(0, 1 - Math.hypot(dx, dy) / R), 2), clamp(dx / 9, -1, 1) * .85]; };
-    f.saws.forEach((s, i) => { const id = "s" + i, [v, p] = near(s[0], s[1], 11); loop(id, "saw_loop", .95 + .05 * (i % 3)); setLoop(id, v * .65, p); });
-    f.wsaws.forEach((s, i) => {
-      const id = "w" + i, [v, p] = near(s[0], s[1], 9); loop(id, "saw_loop", .72 + .03 * (i % 3)); setLoop(id, v * .5, p);
-      if (s[2] && !prev[id]) { const [vv, pp] = near(s[0], s[1], 13); if (vv > .02) play("wall_whoosh", { vol: vv * .9, pan: pp, rand: .08 }); }
-      prev[id] = s[2];
-    });
     f.lasers.forEach((l, i) => {
       const id = "l" + i, [v, p] = near(l[0], l[1], 10); loop(id, "laser_hum", 1 + .02 * i); setLoop(id, l[2] ? v * .55 : 0, p);
       if (prev[id] !== undefined && l[2] !== prev[id]) { const [vv, pp] = near(l[0], l[1], 14); if (vv > .02) play(l[2] ? "laser_on" : "laser_off", { vol: vv, pan: pp, rand: .05 }); }
@@ -84,7 +79,7 @@ const GameAudio = (() => {
     if (mus) { const t = ac.currentTime, m = mus; mus = null; m.cg.gain.setTargetAtTime(0, t, .15); m.ag.gain.setTargetAtTime(0, t, .15); setTimeout(() => { try { m.cs.stop(); m.as.stop(); } catch (e) {} }, 900); }
     stopLoops();
   }
-  function duck(sec) { if (!ac) return; const t = ac.currentTime; musBus.gain.cancelScheduledValues(t); musBus.gain.setTargetAtTime(.1, t, .04); musBus.gain.setTargetAtTime(.5, t + sec, .35); }
+  function duck(sec) { if (!ac) return; const t = ac.currentTime; musBus.gain.cancelScheduledValues(t); musBus.gain.setTargetAtTime(.04, t, .03); musBus.gain.setTargetAtTime(.5, t + (sec || .5), .35); }
   function toggle() { on = !on; try { localStorage.setItem("sm_snd", on ? "1" : "0"); } catch (e) {} if (master) master.gain.setTargetAtTime(on ? 1 : 0, ac.currentTime, .05); return on; }
   document.addEventListener("visibilitychange", () => { if (ac) { if (document.hidden) ac.suspend(); else ac.resume(); } });
   return { begin, play, coin, frame, musicStart, musicStop, duck, toggle, stopLoops, get on() { return on; }, get combo() { return combo.n + 1; } };

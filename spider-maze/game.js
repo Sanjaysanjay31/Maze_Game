@@ -99,7 +99,7 @@ let toastT;function toast(m){const t=$("toast");t.textContent=m;t.classList.add(
 function ui(){$("sc").textContent=G.score;const tmEl=$("tm");if(tmEl)tmEl.textContent=(G.t/1000).toFixed(1)+"s";document.querySelectorAll(".ct").forEach(e=>e.classList.toggle("dead",G.dead.has(e.dataset.n)))}
 function fx(type,x,y){VFX.add(type,x,y,T)}
 function show(title,msg,stars,btn){$("frame").classList.remove("playing");$("ot").textContent=title;$("om").textContent=msg;$("st").textContent=stars;$("go").textContent=btn;$("ov").hidden=false;$("go").focus()}
-function hit(msg){if(state!=="play")return;if(T<G.shield){if(T-(G.blk||-1e9)>300){G.blk=T;GameAudio.play("shield_block",{min:.2,rand:.08});const q=pos();VFX.add("ring",q[0],q[1],T,{c:"#7fd0ff"})}return}if(T<G.inv)return;G.hp--;G.inv=T+1600;shake=1;Snd.sfx("hit");VFX.flash("255,40,60",T);GameAudio.duck(.35);const p=G.p;fx("cloud",...pos());if(navigator.vibrate)navigator.vibrate(70);
+function hit(msg){if(state!=="play")return;if(T<G.shield){if(T-(G.blk||-1e9)>300){G.blk=T;GameAudio.play("shield_block",{min:.2,rand:.08});const q=pos();VFX.add("ring",q[0],q[1],T,{c:"#7fd0ff"})}return}if(T<G.inv)return;G.hp--;G.inv=T+1600;shake=1;Snd.sfx("hit");VFX.flash("255,40,60",T);GameAudio.duck(1.3);const p=G.p;fx("cloud",...pos());if(navigator.vibrate)navigator.vibrate(70);
  if(G.hp<=0){state="over";G.dead.add("spiderman");Snd.music(false);Snd.sfx("lose");ui();show("Out of health","You collected "+G.score+" of "+L.coins.length+" stars. Grab a shield before the blades and wait for the lasers to switch off.","","Try again");return}
  toast(msg);p.i=p.last[0];p.j=p.last[1];p.bi=p.i;p.bj=p.j;p.t=0}
 function held(){return ctl.pad||ctl.ptr||ctl.key[ctl.key.length-1]||null}
@@ -173,7 +173,7 @@ function draw(){
    ctx.fillStyle="#08102d";rrect(ctx,px-S/2,py-S/2,S,S,br);ctx.fill();
    ctx.save();rrect(ctx,px-S/2+2,py-S/2+2,S-4,S-4,br*.9);ctx.clip();
    if(spider.complete)ctx.drawImage(spider,px-S/2,py-S/2,S,S);ctx.restore();
-   ctx.strokeStyle=sh?"#6bd4ff":"#ffd23f";ctx.lineWidth=Math.max(2,B*.055);rrect(ctx,px-S/2,py-S/2,S,S,br);ctx.stroke();ctx.restore();
+   ctx.strokeStyle=sh?"#6bd4ff":"#24376e";ctx.lineWidth=sh?Math.max(2,B*.055):Math.max(1.5,B*.03);rrect(ctx,px-S/2,py-S/2,S,S,br);ctx.stroke();ctx.restore();
    if(sh){ctx.strokeStyle="rgba(120,210,255,"+(.6+.35*Math.sin(T/120))+")";ctx.lineWidth=B*.11;rrect(ctx,px-S/2-B*.07,py-S/2-B*.07,S+B*.14,S+B*.14,br*1.2);ctx.stroke()}}
   const bw=S*.96,bh=B*.2,bx=px-bw/2,by=py-S/2-bh-B*.12,f=G.hp/MAXHP;
   ctx.fillStyle="#fff";ctx.strokeStyle="#0a1536";ctx.lineWidth=B*.045;rrect(ctx,bx,by,bw,bh,bh/2);ctx.fill();ctx.stroke();
