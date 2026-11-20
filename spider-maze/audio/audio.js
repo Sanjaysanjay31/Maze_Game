@@ -37,7 +37,9 @@ const GameAudio = (() => {
     const s = ac.createBufferSource(), g = ac.createGain();
     s.buffer = buf[n]; s.playbackRate.value = (o.rate || 1) * (o.rand ? 1 + (Math.random() - .5) * o.rand : 1); g.gain.value = o.vol == null ? 1 : o.vol; s.connect(g);
     let out = g; if (o.pan && ac.createStereoPanner) { const p = ac.createStereoPanner(); p.pan.value = clamp(o.pan, -1, 1); g.connect(p); out = p; }
-    out.connect(sfxBus); s.start(); return s;
+    out.connect(sfxBus); s.start();
+    if (n !== "heartbeat") duck(o.duck || 0.4);
+    return s;
   }
   function coin() {
     const t = ac ? ac.currentTime : 0; combo.n = t - combo.t < 1.25 ? Math.min(combo.n + 1, SC.length - 1) : 0; combo.t = t;
