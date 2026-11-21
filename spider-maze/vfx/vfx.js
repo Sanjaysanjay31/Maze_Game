@@ -18,6 +18,20 @@ const VFX = (() => {
       }
       L.push({ type: "ring", x, y, t, o: { c: "#ffea00" } });
     },
+    fireblast(x, y, t) {
+      fC = "255,100,20"; fT = t;
+      L.push({ type: "ring", x, y, t, o: { c: "#ff3b00" } });
+      L.push({ type: "ring", x, y, t: t + 40, o: { c: "#ffd23f" } });
+      const C = ["#ff2200", "#ff6a00", "#ffb700", "#ffffff", "#d9381e"];
+      for (let k = 0; k < 36; k++) {
+        const ang = Math.random() * Math.PI * 2, spd = 3 + Math.random() * 11;
+        L.push({ type: "sparkle", x, y, t, o: { vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, c: C[k % C.length], size: .14 + Math.random() * .22 } });
+      }
+      for (let k = 0; k < 5; k++) {
+        const ox = (Math.random() - .5) * 1.1, oy = (Math.random() - .5) * 1.1;
+        L.push({ type: "cloud", x: x + ox, y: y + oy, t: t + k * 35, o: {} });
+      }
+    },
     flash(c, t) { fC = c; fT = t; },
     clear() { L = []; fT = -1e9; },
     update(T) { L = L.filter(f => T - f.t < (LIFE[f.type] || 900)); },

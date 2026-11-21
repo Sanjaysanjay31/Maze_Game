@@ -239,11 +239,11 @@ const cen = (i, j) => [3 * i + 2, 3 * j + 2];
 
 function newGame() {
   const [si, sj] = L.start;
-  const p1 = { i: si, j: sj, bi: si, bj: sj, t: 0, last: [si, sj], hp: MAXHP, id: "spiderman", name: "Spider-Man", shield: 0, sh1: 0, bombs: 0, inv: 0, blk: -1e9, look: null, pp: null, dt: 0 };
+  const p1 = { i: si, j: sj, bi: si, bj: sj, t: 0, last: [si, sj], hp: MAXHP, id: "spiderman", name: "Spider-Man", shield: 0, sh1: 0, bombs: 0, holdingBomb: false, inv: 0, blk: -1e9, look: null, pp: null, dt: 0 };
   let p2 = null;
   if (L.start2) {
     const [s2i, s2j] = L.start2;
-    p2 = { i: s2i, j: s2j, bi: s2i, bj: s2j, t: 0, last: [s2i, s2j], hp: MAXHP, id: "gwen", name: "Ghost Spider", shield: 0, sh1: 0, bombs: 0, inv: 0, blk: -1e9, look: null, pp: null, dt: 0 };
+    p2 = { i: s2i, j: s2j, bi: s2i, bj: s2j, t: 0, last: [s2i, s2j], hp: MAXHP, id: "gwen", name: "Ghost Spider", shield: 0, sh1: 0, bombs: 0, holdingBomb: false, inv: 0, blk: -1e9, look: null, pp: null, dt: 0 };
   }
   G = {
     dead: new Set(),
@@ -256,7 +256,8 @@ function newGame() {
     switches: (L.switches || []).map(s => ({ ...s, active: false })),
     gates: (L.gates || []).map(g => ({ ...g, open: false })),
     coins: L.coins.map((c, k) => ({ x: c[0], y: c[1], got: 0, ph: k })),
-    bombs: (L.bombs || []).map(b => ({ x: b[0], y: b[1], got: 0 })),
+    bombs: (L.bombs || []).map(b => ({ x: b[0], y: b[1], got: 0, prompted: false })),
+    projectiles: [],
     bub: L.bubbles.map(b => ({ x: b[0], y: b[1], got: 0 })),
     shields: L.shields.map(b => ({ x: b[0], y: b[1], got: 0 })),
     saws: (L.saws || []).map(s => ({ data: s, destroyed: false })),
@@ -379,6 +380,86 @@ function hitHero(h, msg) {
   toast(msg);
 }
 
+function throwHeroBomb(h) {
+  const [px, py] = pos(h);
+  const lk = h.look || [0, 1];
+  let targetX = px + lk[0] * 1.8;
+  let targetY = py + lk[1] * 1.8;
+  let targetType = "ground", targetObj = null;
+
+  // 1. Check nearby locked gate
+  for (const gate of (G.gates || [])) {
+    if (!gate.open) {
+      for (const [gx, gy] of gate.blocks) {
+        if (Math.hypot(gx - px, gy - py) < 2.8) {
+          targetX = gx + 0.5; targetY = gy + 0.5;
+          targetType = "gate"; targetObj = gate;
+          break;
+        }
+      }
+      if (targetObj) break;
+    }
+  }
+
+  // 2. Check nearby saw
+  if (!targetObj) {
+    for (let k = 0; k < (G.saws || []).length; k++) {
+      const sObj = G.saws[k];
+      if (!sObj.destroyed) {
+        const [sx, sy] = sawAt(sObj.data, k);
+        if (Math.hypot(sx - px, sy - py) < 2.8) {
+          targetX = sx; targetY = sy;
+          targetType = "saw"; targetObj = sObj;
+          break;
+        }
+      }
+    }
+  }
+
+  // 3. Check nearby wall saw
+  if (!targetObj) {
+    for (const wObj of (G.wsaws || [])) {
+      if (!wObj.destroyed) {
+        const [wx, wy] = wsPos(wObj.data);
+        if (Math.hypot(wx - px, wy - py) < 2.8) {
+          targetX = wx; targetY = wy;
+          targetType = "wsaw"; targetObj = wObj;
+          break;
+        }
+      }
+    }
+  }
+
+  // 4. Check nearby laser
+  if (!targetObj) {
+    for (let k = 0; k < (G.lasers || []).length; k++) {
+      const lObj = G.lasers[k];
+      if (!lObj.destroyed && !lObj.disabled) {
+        const l = lObj.data;
+        if (Math.hypot(l[0] - px, l[1] - py) < 2.8) {
+          targetX = l[0]; targetY = l[1];
+          targetType = "laser"; targetObj = lObj;
+          break;
+        }
+      }
+    }
+  }
+
+  h.bombs = Math.max(0, (h.bombs || 0) - 1);
+  h.holdingBomb = false;
+
+  G.projectiles = G.projectiles || [];
+  G.projectiles.push({
+    sx: px, sy: py,
+    tx: targetX, ty: targetY,
+    t0: T, dur: 320,
+    targetType, targetObj
+  });
+
+  GameAudio.play("coin", { vol: 1.2, rand: .1 });
+  toast(`${h.name} threw a Bomb! 💣💥`);
+}
+
 function held() { return ctl.pad || ctl.ptr || ctl.key[ctl.key.length - 1] || null; }
 
 function update(dt) {
@@ -406,38 +487,56 @@ function update(dt) {
     }
   }
 
-  const heroes = [G.p1, G.p2].filter(Boolean);
-  for (const h of heroes) {
-    if (G.dead.has(h.id)) continue;
-    const [px, py] = pos(h);
-    // Collectible Bombs (💣)
-    for (const b of (G.bombs || [])) {
-      if (!b.got && Math.hypot(b.x - px, b.y - py) < 1.4) {
-        b.got = 1;
-        h.bombs = (h.bombs || 0) + 1;
-        fx("spark", b.x, b.y);
-        VFX.text(b.x, b.y, "💣 +1", T);
-        GameAudio.play("coin", { vol: 1.4 });
-        toast(`${h.name} collected a Bomb! 💣`);
-      }
-    }
+  // Update thrown bomb projectiles (3D flying arc to target)
+  if (G.projectiles && G.projectiles.length) {
+    G.projectiles = G.projectiles.filter(pj => {
+      const elapsed = T - pj.t0;
+      if (elapsed >= pj.dur) {
+        // DETONATE WITH INTENSE FIREBLAST (NO CONFETTI / NO CELEBRATION HERE!)
+        const x = pj.tx, y = pj.ty;
+        VFX.fireblast(x, y, T);
+        shake = 1.6;
+        GameAudio.play("lose", { vol: 1.4 });
+        GameAudio.play("hit", { vol: 1.4 });
 
-    // Bombs destroying locked gates (emergency rescue or route blast!)
-    for (const gate of (G.gates || [])) {
-      if (!gate.open && (h.bombs || 0) > 0) {
-        const nearGate = gate.blocks.some(([gx, gy]) => Math.hypot(gx - px, gy - py) < 1.45);
-        if (nearGate) {
-          h.bombs--;
+        if (pj.targetType === "gate" && pj.targetObj) {
+          const gate = pj.targetObj;
           gate.open = true;
           for (const [gx, gy] of gate.blocks) {
             if (WALL[gy]) WALL[gy][gx] = 0;
             fx("cloud", gx, gy);
-            VFX.cracker(gx, gy, T);
           }
           shadow = buildShadow();
-          shake = 1.4;
-          GameAudio.play("lose", { vol: 1.2 });
-          toast("Gate Blown Open with Bomb! 💥");
+          toast("Barrier Blown Open with Bomb! 💥");
+        } else if (pj.targetType === "saw" && pj.targetObj) {
+          pj.targetObj.destroyed = true;
+          toast("Saw Wheel Obliterated! 💥");
+        } else if (pj.targetType === "wsaw" && pj.targetObj) {
+          pj.targetObj.destroyed = true;
+          toast("Wall Blade Obliterated! 💥");
+        } else if (pj.targetType === "laser" && pj.targetObj) {
+          pj.targetObj.destroyed = true;
+          pj.targetObj.disabled = true;
+          toast("Laser Generator Blown Up! 💥");
+        } else {
+          toast("BOOM! Bomb Detonated! 💥");
+        }
+        return false;
+      }
+      return true;
+    });
+  }
+
+  const heroes = [G.p1, G.p2].filter(Boolean);
+  for (const h of heroes) {
+    if (G.dead.has(h.id)) continue;
+    const [px, py] = pos(h);
+    // Collectible Bombs (💣 on Floor)
+    for (const b of (G.bombs || [])) {
+      if (!b.got && Math.hypot(b.x - px, b.y - py) < 1.7) {
+        if (!b.prompted && h === G.p && !h.holdingBomb) {
+          b.prompted = true;
+          toast("Press 7 to Pick Up Bomb 💣");
         }
       }
     }
@@ -446,17 +545,17 @@ function update(dt) {
     (G.saws || []).forEach((sObj, k) => {
       if (sObj.destroyed) return;
       const [x, y] = sawAt(sObj.data, k);
-      if (near(x, y, 1.25, px, py)) {
-        if ((h.bombs || 0) > 0) {
-          h.bombs--;
+      if (near(x, y, 1.05, px, py)) {
+        if (h.holdingBomb || (h.bombs || 0) > 0) {
+          h.bombs = Math.max(0, (h.bombs || 0) - 1);
+          h.holdingBomb = false;
           sObj.destroyed = true;
-          VFX.cracker(x, y, T);
-          VFX.confetti(x, y, T);
-          fx("cloud", x, y);
-          shake = 1.3;
-          GameAudio.play("lose", { vol: 1.2 });
+          VFX.fireblast(x, y, T);
+          shake = 1.6;
+          GameAudio.play("lose", { vol: 1.4 });
+          GameAudio.play("hit", { vol: 1.4 });
           toast("Saw Wheel Destroyed! 💥");
-        } else if (near(x, y, 1.05, px, py)) {
+        } else {
           hitHero(h, "Sliced by a blade!");
         }
       }
@@ -465,16 +564,17 @@ function update(dt) {
     (G.wsaws || []).forEach(wObj => {
       if (wObj.destroyed) return;
       const [x, y] = wsPos(wObj.data);
-      if (near(x, y, 1.25, px, py)) {
-        if ((h.bombs || 0) > 0) {
-          h.bombs--;
+      if (near(x, y, 1.05, px, py)) {
+        if (h.holdingBomb || (h.bombs || 0) > 0) {
+          h.bombs = Math.max(0, (h.bombs || 0) - 1);
+          h.holdingBomb = false;
           wObj.destroyed = true;
-          VFX.cracker(x, y, T);
-          fx("cloud", x, y);
-          shake = 1.3;
-          GameAudio.play("lose", { vol: 1.2 });
+          VFX.fireblast(x, y, T);
+          shake = 1.6;
+          GameAudio.play("lose", { vol: 1.4 });
+          GameAudio.play("hit", { vol: 1.4 });
           toast("Wall Blade Destroyed! 💥");
-        } else if (near(x, y, 1.05, px, py)) {
+        } else {
           hitHero(h, "Cut by a wall blade!");
         }
       }
@@ -492,14 +592,15 @@ function update(dt) {
       const inX = hz ? Math.abs(px - l[0]) <= 1.25 : Math.abs(px - l[0]) <= 0.8;
       const inY = hz ? Math.abs(py - l[1]) <= 0.8 : Math.abs(py - l[1]) <= 1.25;
       if (inX && inY) {
-        if ((h.bombs || 0) > 0) {
-          h.bombs--;
+        if (h.holdingBomb || (h.bombs || 0) > 0) {
+          h.bombs = Math.max(0, (h.bombs || 0) - 1);
+          h.holdingBomb = false;
           lObj.destroyed = true;
           lObj.disabled = true;
-          VFX.cracker(l[0], l[1], T);
-          fx("cloud", l[0], l[1]);
-          shake = 1.3;
-          GameAudio.play("lose", { vol: 1.2 });
+          VFX.fireblast(l[0], l[1], T);
+          shake = 1.6;
+          GameAudio.play("lose", { vol: 1.4 });
+          GameAudio.play("hit", { vol: 1.4 });
           toast("Laser Generator Destroyed! 💥");
         } else {
           hitHero(h, "Laser zap!");
@@ -768,62 +869,136 @@ function draw() {
     }
   }
 
-  // Wall Switches (Wall-Mounted Flush Industrial Console)
+  // Wall Switches (3D Trapezoidal Wall-Mounted Switch matching Reference Image)
   for (const sw of (G.switches || [])) {
-    const px = X(sw.x), py = Y(sw.y), r = B * .42;
-    const side = sw.side || "left";
-    const act = sw.active, col = act ? "#00e676" : (sw.color || "#ff1744");
+    const cx = X(sw.x), cy = Y(sw.y);
+    const side = sw.side || "right";
+    const act = sw.active;
     ctx.save();
 
-    let offX = 0, offY = 0, w = r * 1.5, h = r * 1.5;
-    if (side === "right") { offX = B * .22; w = r * 1.1; }
-    else if (side === "left") { offX = -B * .22; w = r * 1.1; }
-    else if (side === "top") { offY = -B * .22; h = r * 1.1; }
-    else if (side === "bottom") { offY = B * .22; h = r * 1.1; }
+    // From reference image: metallic base plate on wall border + protruding 3D green trapezoid push button
+    const plateW = B * .18, plateH = B * 1.05;
+    const depth = act ? B * .1 : B * .45; // pushes in when pressed
+    const hBase = B * .82, hFront = B * .52; // trapezoid tapers into corridor
+    ctx.lineJoin = "miter";
 
-    const sx = px + offX, sy = py + offY;
+    if (side === "right") {
+      const edgeX = cx + B * .5;
+      const px0 = edgeX - plateW, py0 = cy - plateH / 2;
+      // Steel base plate
+      ctx.fillStyle = "#334155"; ctx.strokeStyle = "#0f172a"; ctx.lineWidth = Math.max(2, B * .04);
+      ctx.fillRect(px0, py0, plateW, plateH); ctx.strokeRect(px0, py0, plateW, plateH);
+      ctx.fillStyle = "#94a3b8";
+      ctx.fillRect(px0 + plateW * .3, py0 + B * .1, B * .06, B * .06);
+      ctx.fillRect(px0 + plateW * .3, py0 + plateH - B * .16, B * .06, B * .06);
 
-    ctx.fillStyle = "rgba(0,0,0,0.4)";
-    rrect(ctx, sx - w / 2 + 2, sy - h / 2 + 3, w, h, r * .25);
-    ctx.fill();
+      // Trapezoid extending LEFT into corridor
+      const bX = px0, fX = bX - depth;
+      const t1 = cy - hBase / 2, b1 = cy + hBase / 2;
+      const t2 = cy - hFront / 2, b2 = cy + hFront / 2;
 
-    ctx.fillStyle = "#1e293b";
-    ctx.strokeStyle = act ? "#10b981" : "#475569";
-    ctx.lineWidth = Math.max(2, B * .045);
-    rrect(ctx, sx - w / 2, sy - h / 2, w, h, r * .25);
-    ctx.fill();
-    ctx.stroke();
+      ctx.fillStyle = "rgba(0,0,0,0.35)";
+      ctx.beginPath(); ctx.moveTo(bX, b1); ctx.lineTo(fX, b2); ctx.lineTo(fX - B * .04, b2 + B * .08); ctx.lineTo(bX, b1 + B * .08); ctx.closePath(); ctx.fill();
 
-    ctx.strokeStyle = "#64748b";
-    ctx.lineWidth = B * .07;
-    ctx.beginPath();
-    if (side === "right") { ctx.moveTo(sx + w / 2, sy); ctx.lineTo(sx + w / 2 + B * .25, sy); }
-    else if (side === "left") { ctx.moveTo(sx - w / 2, sy); ctx.lineTo(sx - w / 2 - B * .25, sy); }
-    else if (side === "top") { ctx.moveTo(sx, sy - h / 2); ctx.lineTo(sx, sy - h / 2 - B * .25); }
-    else if (side === "bottom") { ctx.moveTo(sx, sy + h / 2); ctx.lineTo(sx, sy + h / 2 + B * .25); }
-    ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(bX, t1); ctx.lineTo(fX, t2); ctx.lineTo(fX, b2); ctx.lineTo(bX, b1); ctx.closePath();
+      const g = ctx.createLinearGradient(fX, cy, bX, cy);
+      if (!act) { g.addColorStop(0, "#00e676"); g.addColorStop(0.7, "#00c853"); g.addColorStop(1, "#009624"); }
+      else { g.addColorStop(0, "#38bdf8"); g.addColorStop(1, "#0284c7"); }
+      ctx.fillStyle = g; ctx.fill();
+      ctx.strokeStyle = "#000000"; ctx.lineWidth = Math.max(2.5, B * .06); ctx.stroke();
 
-    ctx.shadowColor = col;
-    ctx.shadowBlur = act ? B * .4 : B * .65;
-    ctx.fillStyle = col;
-    ctx.beginPath();
-    ctx.arc(sx, sy, r * (act ? .5 : .62), 0, 7);
-    ctx.fill();
+      ctx.fillStyle = !act ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.75)";
+      ctx.beginPath(); ctx.moveTo(bX, t1); ctx.lineTo(fX, t2); ctx.lineTo(fX + depth * .25, t2 + B * .06); ctx.lineTo(bX, t1 + B * .06); ctx.closePath(); ctx.fill();
+    } else if (side === "left") {
+      const edgeX = cx - B * .5;
+      const px0 = edgeX, py0 = cy - plateH / 2;
+      ctx.fillStyle = "#334155"; ctx.strokeStyle = "#0f172a"; ctx.lineWidth = Math.max(2, B * .04);
+      ctx.fillRect(px0, py0, plateW, plateH); ctx.strokeRect(px0, py0, plateW, plateH);
+      ctx.fillStyle = "#94a3b8";
+      ctx.fillRect(px0 + plateW * .3, py0 + B * .1, B * .06, B * .06);
+      ctx.fillRect(px0 + plateW * .3, py0 + plateH - B * .16, B * .06, B * .06);
 
-    if (!act) {
-      ctx.strokeStyle = "rgba(255, 23, 68, " + (.4 + .4 * Math.sin(T / 150)) + ")";
-      ctx.lineWidth = B * .065;
-      ctx.beginPath();
-      ctx.arc(sx, sy, r * (.78 + .1 * Math.sin(T / 150)), 0, 7);
-      ctx.stroke();
+      const bX = px0 + plateW, fX = bX + depth;
+      const t1 = cy - hBase / 2, b1 = cy + hBase / 2;
+      const t2 = cy - hFront / 2, b2 = cy + hFront / 2;
+
+      ctx.fillStyle = "rgba(0,0,0,0.35)";
+      ctx.beginPath(); ctx.moveTo(bX, b1); ctx.lineTo(fX, b2); ctx.lineTo(fX + B * .04, b2 + B * .08); ctx.lineTo(bX, b1 + B * .08); ctx.closePath(); ctx.fill();
+
+      ctx.beginPath(); ctx.moveTo(bX, t1); ctx.lineTo(fX, t2); ctx.lineTo(fX, b2); ctx.lineTo(bX, b1); ctx.closePath();
+      const g = ctx.createLinearGradient(bX, cy, fX, cy);
+      if (!act) { g.addColorStop(0, "#009624"); g.addColorStop(0.3, "#00c853"); g.addColorStop(1, "#00e676"); }
+      else { g.addColorStop(0, "#0284c7"); g.addColorStop(1, "#38bdf8"); }
+      ctx.fillStyle = g; ctx.fill();
+      ctx.strokeStyle = "#000000"; ctx.lineWidth = Math.max(2.5, B * .06); ctx.stroke();
+
+      ctx.fillStyle = !act ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.75)";
+      ctx.beginPath(); ctx.moveTo(bX, t1); ctx.lineTo(fX, t2); ctx.lineTo(fX - depth * .25, t2 + B * .06); ctx.lineTo(bX, t1 + B * .06); ctx.closePath(); ctx.fill();
+    } else if (side === "top") {
+      const edgeY = cy - B * .5;
+      const px0 = cx - plateH / 2, py0 = edgeY;
+      ctx.fillStyle = "#334155"; ctx.strokeStyle = "#0f172a"; ctx.lineWidth = Math.max(2, B * .04);
+      ctx.fillRect(px0, py0, plateH, plateW); ctx.strokeRect(px0, py0, plateH, plateW);
+
+      const bY = py0 + plateW, fY = bY + depth;
+      const l1 = cx - hBase / 2, r1 = cx + hBase / 2;
+      const l2 = cx - hFront / 2, r2 = cx + hFront / 2;
+
+      ctx.beginPath(); ctx.moveTo(l1, bY); ctx.lineTo(l2, fY); ctx.lineTo(r2, fY); ctx.lineTo(r1, bY); ctx.closePath();
+      const g = ctx.createLinearGradient(cx, bY, cx, fY);
+      if (!act) { g.addColorStop(0, "#009624"); g.addColorStop(1, "#00e676"); }
+      else { g.addColorStop(0, "#0284c7"); g.addColorStop(1, "#38bdf8"); }
+      ctx.fillStyle = g; ctx.fill();
+      ctx.strokeStyle = "#000000"; ctx.lineWidth = Math.max(2.5, B * .06); ctx.stroke();
     } else {
-      ctx.fillStyle = "#ffffff";
-      ctx.beginPath();
-      ctx.arc(sx, sy, r * .22, 0, 7);
-      ctx.fill();
+      const edgeY = cy + B * .5;
+      const px0 = cx - plateH / 2, py0 = edgeY - plateW;
+      ctx.fillStyle = "#334155"; ctx.strokeStyle = "#0f172a"; ctx.lineWidth = Math.max(2, B * .04);
+      ctx.fillRect(px0, py0, plateH, plateW); ctx.strokeRect(px0, py0, plateH, plateW);
+
+      const bY = py0, fY = bY - depth;
+      const l1 = cx - hBase / 2, r1 = cx + hBase / 2;
+      const l2 = cx - hFront / 2, r2 = cx + hFront / 2;
+
+      ctx.beginPath(); ctx.moveTo(l1, bY); ctx.lineTo(l2, fY); ctx.lineTo(r2, fY); ctx.lineTo(r1, bY); ctx.closePath();
+      const g = ctx.createLinearGradient(cx, bY, cx, fY);
+      if (!act) { g.addColorStop(0, "#009624"); g.addColorStop(1, "#00e676"); }
+      else { g.addColorStop(0, "#0284c7"); g.addColorStop(1, "#38bdf8"); }
+      ctx.fillStyle = g; ctx.fill();
+      ctx.strokeStyle = "#000000"; ctx.lineWidth = Math.max(2.5, B * .06); ctx.stroke();
     }
     ctx.restore();
   }
+
+  // Draw Flying Bomb Projectiles (3D parabolic arc)
+  (G.projectiles || []).forEach(pj => {
+    const p = Math.min(1, Math.max(0, (T - pj.t0) / pj.dur));
+    const curX = pj.sx + (pj.tx - pj.sx) * p;
+    const curY = pj.sy + (pj.ty - pj.sy) * p;
+    const arcH = Math.sin(p * Math.PI) * B * 1.25;
+    const px = X(curX), py = Y(curY) - arcH, r = B * .4;
+
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0," + (0.35 * (1 - p * 0.3)) + ")";
+    ctx.beginPath(); ctx.ellipse(X(curX), Y(curY), r * 0.9, r * 0.38, 0, 0, 7); ctx.fill();
+
+    ctx.translate(px, py);
+    ctx.rotate(p * Math.PI * 4);
+    const bg = ctx.createRadialGradient(-r * .3, -r * .35, r * .08, 0, 0, r);
+    bg.addColorStop(0, "#718096"); bg.addColorStop(0.35, "#2d3748"); bg.addColorStop(1, "#0d1117");
+    ctx.fillStyle = bg; ctx.beginPath(); ctx.arc(0, 0, r, 0, 7); ctx.fill();
+    ctx.strokeStyle = "#1a202c"; ctx.lineWidth = B * .035; ctx.stroke();
+
+    ctx.fillStyle = "#d97706"; ctx.fillRect(-r * .2, -r - r * .18, r * .4, r * .2);
+    ctx.beginPath(); ctx.moveTo(0, -r - r * .18); ctx.quadraticCurveTo(r * .25, -r - r * .5, r * .12, -r - r * .65);
+    ctx.strokeStyle = "#fef08a"; ctx.lineWidth = B * .045; ctx.stroke();
+
+    const sparkR = B * (.1 + .04 * Math.sin(T / 35));
+    const sparkG = ctx.createRadialGradient(r * .12, -r - r * .65, 0, r * .12, -r - r * .65, sparkR * 2);
+    sparkG.addColorStop(0, "#ffffff"); sparkG.addColorStop(0.4, "#fef08a"); sparkG.addColorStop(0.8, "#ff3b00"); sparkG.addColorStop(1, "rgba(255,59,0,0)");
+    ctx.fillStyle = sparkG; ctx.beginPath(); ctx.arc(r * .12, -r - r * .65, sparkR * 2, 0, 7); ctx.fill();
+    ctx.restore();
+  });
 
   // Draw Heroes (Spider-Man and Ghost Spider)
   const heroList = [
@@ -877,6 +1052,65 @@ function draw() {
       ctx.fillText(`💣${h.p.bombs}`, badgeX + B * .47, badgeY + 1);
       ctx.restore();
     }
+
+    // 3D BOMB CARRYING ANIMATION (Hero holding bomb out in front, bobbing with steps)
+    if (h.p.holdingBomb) {
+      ctx.save();
+      const lk = h.p.look || [0, 1];
+      const isMoving = h.p.t !== 0 || held();
+      const bob = Math.sin(T / 80) * (isMoving ? B * .12 : B * .04);
+      const bx = px + lk[0] * B * .55;
+      const by = py + lk[1] * B * .45 - B * .1 + bob;
+      const br = B * .42;
+
+      // 1. Bomb ground shadow
+      ctx.fillStyle = "rgba(0,0,0,0.38)";
+      ctx.beginPath();
+      ctx.ellipse(bx, py + S * .46, br * 1.1, br * .44, 0, 0, 7);
+      ctx.fill();
+
+      // 2. Cartoon Gloves holding the bomb from both sides
+      const isSpidey = h.p.id === "spiderman";
+      const gloveCol = isSpidey ? "#e52521" : "#ffffff";
+      const gloveStroke = isSpidey ? "#7f1d1d" : "#0891b2";
+      const handW = B * .26, handH = B * .22;
+
+      ctx.save();
+      ctx.fillStyle = gloveCol; ctx.strokeStyle = gloveStroke; ctx.lineWidth = Math.max(1.8, B * .04);
+      rrect(ctx, bx - br * 1.05, by - handH / 2, handW, handH, handH * .4); ctx.fill(); ctx.stroke();
+      rrect(ctx, bx + br * 1.05 - handW, by - handH / 2, handW, handH, handH * .4); ctx.fill(); ctx.stroke();
+      ctx.restore();
+
+      // 3. Spherical 3D Bomb Body with Specular Highlight
+      const bg = ctx.createRadialGradient(bx - br * .32, by - br * .35, br * .08, bx, by, br);
+      bg.addColorStop(0, "#718096"); bg.addColorStop(0.35, "#2d3748"); bg.addColorStop(1, "#090d16");
+      ctx.fillStyle = bg; ctx.beginPath(); ctx.arc(bx, by, br, 0, 7); ctx.fill();
+      ctx.strokeStyle = "#000000"; ctx.lineWidth = Math.max(2, B * .045); ctx.stroke();
+
+      // Specular shine dot
+      ctx.fillStyle = "rgba(255,255,255,0.7)";
+      ctx.beginPath(); ctx.arc(bx - br * .32, by - br * .35, br * .2, 0, 7); ctx.fill();
+
+      // 4. Brass Collar Neck
+      ctx.fillStyle = "#d97706"; ctx.strokeStyle = "#78350f"; ctx.lineWidth = B * .025;
+      ctx.fillRect(bx - br * .22, by - br - br * .18, br * .44, br * .2);
+      ctx.strokeRect(bx - br * .22, by - br - br * .18, br * .44, br * .2);
+
+      // 5. Curved Rope Fuse
+      ctx.beginPath();
+      ctx.moveTo(bx, by - br - br * .18);
+      ctx.quadraticCurveTo(bx + br * .35, by - br - br * .5, bx + br * .18, by - br - br * .75);
+      ctx.strokeStyle = "#fef08a"; ctx.lineWidth = B * .05; ctx.stroke();
+
+      // 6. Animated Burning Flame Spark
+      const sparkR = B * (.11 + .04 * Math.sin(T / 35));
+      const sparkG = ctx.createRadialGradient(bx + br * .18, by - br - br * .75, 0, bx + br * .18, by - br - br * .75, sparkR * 2.8);
+      sparkG.addColorStop(0, "#ffffff"); sparkG.addColorStop(0.3, "#fef08a"); sparkG.addColorStop(0.7, "#ff4500"); sparkG.addColorStop(1, "rgba(255,69,0,0)");
+      ctx.fillStyle = sparkG;
+      ctx.beginPath(); ctx.arc(bx + br * .18, by - br - br * .75, sparkR * 2.8, 0, 7); ctx.fill();
+
+      ctx.restore();
+    }
   }
 
   VFX.draw(ctx, { X, Y, B, T, cloud: cloudS, cw, ch, lowhp: G.p.hp === 1 && state === "play" });
@@ -892,22 +1126,99 @@ function draw() {
     }
   }
 
-  // On-Canvas Victory Banner (No modal popup!)
+  // On-Canvas Victory Banner (Neat, Polished, 3D Celebration Plaque!)
   if (state === "won") {
     ctx.save();
     const font = getComputedStyle(document.body).getPropertyValue("--display") || "sans-serif";
+    
+    // 1. Subtle dark royal vignette so characters & firecrackers pop
+    ctx.fillStyle = "rgba(4, 10, 26, 0.72)";
+    ctx.fillRect(0, 0, cw, ch);
+
+    // 2. Centered Curved Plaque / Banner Ribbon
+    const bw = Math.min(cw * .92, B * 9.5);
+    const bh = B * 4.6;
+    const bx = (cw - bw) / 2;
+    const by = ch * .18 + Math.sin(T / 250) * B * .06;
+
+    // Plaque outer shadow & dark navy base
+    ctx.shadowColor = "rgba(0,0,0,0.65)"; ctx.shadowBlur = B * .5; ctx.shadowOffsetY = B * .15;
+    ctx.fillStyle = "#070e24";
+    rrect(ctx, bx, by, bw, bh, B * .4); ctx.fill();
+    ctx.shadowColor = "transparent";
+
+    // 3D Metallic Gold Border
+    const bgGold = ctx.createLinearGradient(bx, by, bx + bw, by + bh);
+    bgGold.addColorStop(0, "#ffd23f"); bgGold.addColorStop(0.5, "#fffbeb"); bgGold.addColorStop(1, "#d97706");
+    ctx.strokeStyle = bgGold; ctx.lineWidth = Math.max(3, B * .1);
+    rrect(ctx, bx, by, bw, bh, B * .4); ctx.stroke();
+
+    // Inner glowing trim line
+    ctx.strokeStyle = "rgba(255, 210, 63, 0.4)"; ctx.lineWidth = B * .03;
+    rrect(ctx, bx + B * .12, by + B * .12, bw - B * .24, bh - B * .24, B * .32); ctx.stroke();
+
+    // 3. Channel Name Header ("GLOBAL GAMES SK")
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    const vy = ch * .22 + Math.sin(T / 250) * B * .08;
-    ctx.font = "900 " + Math.round(B * .62) + "px " + font;
-    ctx.shadowColor = "#ffd23f"; ctx.shadowBlur = B * .5;
-    ctx.strokeStyle = "#050b20"; ctx.lineWidth = B * .12;
-    ctx.fillStyle = "#ffd23f";
-    ctx.strokeText("ALL HEROES ESCAPED!", cw / 2, vy);
-    ctx.fillText("ALL HEROES ESCAPED!", cw / 2, vy);
+    const headerY = by + B * .75;
     ctx.font = "900 " + Math.round(B * .44) + "px " + font;
-    ctx.fillStyle = "#22c55e"; ctx.shadowColor = "#22c55e";
-    ctx.strokeText("★★★ VICTORY! ★★★", cw / 2, vy + B * .68);
-    ctx.fillText("★★★ VICTORY! ★★★", cw / 2, vy + B * .68);
+    ctx.shadowColor = "rgba(0,0,0,0.8)"; ctx.shadowBlur = B * .2;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText("GLOBAL GAMES ", cw / 2 - B * .4, headerY);
+    ctx.fillStyle = "#ff1744"; ctx.shadowColor = "#ff1744"; ctx.shadowBlur = B * .35;
+    ctx.fillText("SK", cw / 2 + B * 1.35, headerY);
+    ctx.shadowColor = "transparent";
+
+    // 4. Main Headline: "ALL HEROES ESCAPED!"
+    const titleY = headerY + B * .95;
+    ctx.font = "900 " + Math.round(B * .72) + "px " + font;
+    ctx.fillStyle = "#78350f";
+    ctx.fillText("ALL HEROES ESCAPED!", cw / 2, titleY + B * .06);
+    const faceG = ctx.createLinearGradient(0, titleY - B * .4, 0, titleY + B * .4);
+    faceG.addColorStop(0, "#ffffff"); faceG.addColorStop(0.35, "#fef08a"); faceG.addColorStop(1, "#f59e0b");
+    ctx.fillStyle = faceG;
+    ctx.strokeStyle = "#050b1c"; ctx.lineWidth = B * .11;
+    ctx.strokeText("ALL HEROES ESCAPED!", cw / 2, titleY);
+    ctx.fillText("ALL HEROES ESCAPED!", cw / 2, titleY);
+
+    // 5. Subtitle: "★★★ GRAND VICTORY ★★★"
+    const subY = titleY + B * .85;
+    ctx.font = "900 " + Math.round(B * .46) + "px " + font;
+    ctx.fillStyle = "#22c55e"; ctx.shadowColor = "#22c55e"; ctx.shadowBlur = B * .4;
+    ctx.strokeStyle = "#050b1c"; ctx.lineWidth = B * .09;
+    ctx.strokeText("★★★ GRAND VICTORY ★★★", cw / 2, subY);
+    ctx.fillText("★★★ GRAND VICTORY ★★★", cw / 2, subY);
+    ctx.shadowColor = "transparent";
+
+    // 6. Dual Hero Safe Status Icons with Glowing 3D Green Ticks
+    const cardY = subY + B * 1.05;
+    const heroes = [G.p1, G.p2].filter(Boolean);
+    const cardSpacing = B * 2.2;
+    heroes.forEach((hero, idx) => {
+      const hx = cw / 2 + (idx - (heroes.length - 1) / 2) * cardSpacing;
+      const cr = B * .52;
+      ctx.save();
+      ctx.fillStyle = "#1e293b"; ctx.strokeStyle = "#22c55e"; ctx.lineWidth = B * .06;
+      ctx.beginPath(); ctx.arc(hx, cardY, cr, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.clip();
+      const img = hero.id === "spiderman" ? IM.spiderman : IM.gwen;
+      if (img && img.complete) ctx.drawImage(img, hx - cr, cardY - cr, cr * 2, cr * 2);
+      ctx.restore();
+
+      const tickScale = 1 + .12 * Math.sin(T / 120 + idx);
+      const tx = hx + cr * .65, ty = cardY - cr * .45, tr = B * .24 * tickScale;
+      ctx.save();
+      ctx.fillStyle = "#22c55e"; ctx.shadowColor = "#22c55e"; ctx.shadowBlur = B * .3;
+      ctx.beginPath(); ctx.arc(tx, ty, tr, 0, 7); ctx.fill();
+      ctx.fillStyle = "#ffffff"; ctx.font = "900 " + Math.round(tr * 1.3) + "px sans-serif";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText("✔", tx, ty + 1);
+      ctx.restore();
+
+      ctx.font = "800 " + Math.round(B * .26) + "px " + font;
+      ctx.fillStyle = "#ffffff"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(hero.id === "spiderman" ? "Spider-Man" : "Ghost Spider", hx, cardY + cr + B * .26);
+    });
+
     ctx.restore();
   }
 
@@ -946,7 +1257,7 @@ const ctl = { key: [], ptr: null, pad: null };
 const KM = { ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right", w: "up", s: "down", a: "left", d: "right" };
 const km = e => KM[e.key.length > 1 ? e.key : e.key.toLowerCase()];
 
-// Keyboard switching: '1' for Spider-Man, '2' for Ghost Spider (invisible on screen)
+// Keyboard switching: '1' Spider-Man, '2' Ghost Spider, '7' Pick/Carry Bomb, '8' Throw Bomb
 addEventListener("keydown", e => {
   if (e.key === "1" && !G.dead.has("spiderman")) {
     G.active = 1;
@@ -957,6 +1268,39 @@ addEventListener("keydown", e => {
     G.active = 2;
     const [nx, ny] = pos(G.p2); camX = nx; camY = ny;
     ui(); return;
+  }
+  if (e.key === "7" || e.code === "Digit7" || e.code === "Numpad7") {
+    const h = G.p;
+    if (h && !G.dead.has(h.id)) {
+      const [px, py] = pos(h);
+      const nearBomb = (G.bombs || []).find(b => !b.got && Math.hypot(b.x - px, b.y - py) < 1.85);
+      if (nearBomb) {
+        nearBomb.got = 1;
+        h.bombs = (h.bombs || 0) + 1;
+        h.holdingBomb = true;
+        GameAudio.play("coin", { vol: 1.4 });
+        fx("spark", nearBomb.x, nearBomb.y);
+        VFX.text(px, py, "💣 CARRYING!", T);
+        toast(`${h.name} is carrying a Bomb! 💣 (Press 8 to Throw)`);
+      } else if ((h.bombs || 0) > 0) {
+        h.holdingBomb = !h.holdingBomb;
+        toast(h.holdingBomb ? `${h.name} is carrying a Bomb! 💣 (Press 8 to Throw)` : "Bomb stashed.");
+      } else {
+        toast("No bomb nearby to pick up!");
+      }
+    }
+    return;
+  }
+  if (e.key === "8" || e.code === "Digit8" || e.code === "Numpad8") {
+    const h = G.p;
+    if (h && !G.dead.has(h.id)) {
+      if (!h.holdingBomb && (h.bombs || 0) === 0) {
+        toast("No bomb ready! Stand near bomb and press 7 to pick up.");
+        return;
+      }
+      throwHeroBomb(h);
+    }
+    return;
   }
   const m = km(e); if (!m) return;
   e.preventDefault(); if (!ctl.key.includes(m)) ctl.key.push(m);
