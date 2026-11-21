@@ -21,7 +21,7 @@ The game world operates on a discrete grid where each logical corridor cell `(i,
 
 ### Unified Normal Walls vs. Distinct Blocker Walls:
 1. **Normal Maze Walls**:
-   - Within each level, all normal maze walls maintain a consistent, unified aesthetic and color palette (e.g. Cobalt Blue or Cyberpunk Navy).
+   - Across all levels, all normal maze walls maintain the identical Cobalt Blue metallic aesthetic (`theme: "blue"`), matching Level 1 and ensuring consistent visual branding.
 2. **Specific 2-Block Route Gates (`gates`)**:
    - The 2 blocks that block a hero's path to the next section **MUST NEVER** look like regular walls.
    - **Visual Appearance**:
