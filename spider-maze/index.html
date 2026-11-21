@@ -26,22 +26,28 @@
     <div class="lvl-card" data-lvl="0">
       <div class="lvl-hdr"><span class="lvl-tag solo">Solo (1 Hero)</span><span class="lvl-num">Level 1</span></div>
       <div class="lvl-title">Solo Escape</div>
-      <div class="lvl-desc">Spider-Man solo challenge. Collect 15 stars, dodge spinning saw blades & laser barriers to escape.</div>
+      <div class="lvl-desc">Spider-Man solo challenge. Collect 10 stars, dodge spinning saw blades & laser barriers.</div>
       <button class="lvl-btn" data-lvl="0">Play Level 1 ▶</button>
     </div>
     <div class="lvl-card coop" data-lvl="1">
-      <div class="lvl-hdr"><span class="lvl-tag coop">Co-op Duo (2 Heroes)</span><span class="lvl-num">Level 2</span></div>
+      <div class="lvl-hdr"><span class="lvl-tag coop">Co-op Duo</span><span class="lvl-num">Level 2</span></div>
       <div class="lvl-title">Spider-Man & Ghost Spider</div>
-      <div class="lvl-desc">Cooperative switch maze! Press wall buttons to blow open secret gates and disable lasers to escape together!</div>
+      <div class="lvl-desc">Cooperative switch maze! Press wall buttons to blow open secret gates & beat the saw-laser gauntlet.</div>
       <button class="lvl-btn" data-lvl="1">Play Level 2 ▶</button>
+    </div>
+    <div class="lvl-card master" data-lvl="2">
+      <div class="lvl-hdr"><span class="lvl-tag master">Master Co-op</span><span class="lvl-num">Level 3</span></div>
+      <div class="lvl-title">Matrix Laser Gauntlet</div>
+      <div class="lvl-desc">Ultimate dual-hero gauntlet! Titanium emerald maze, multi-switch vault barriers & timing lasers.</div>
+      <button class="lvl-btn" data-lvl="2">Play Level 3 ▶</button>
     </div>
   </div>
   <button id="btn-back-ratio" class="sub-btn">← Back to Screen Ratio</button>
 </div>
 
-<!-- STEP 3: RESULTS (WIN / GAMEOVER) -->
+<!-- STEP 3: RESULTS (GAMEOVER ONLY) -->
 <div id="step-results" hidden>
-  <button id="btn-retry" class="main-btn">Play Again</button>
+  <button id="btn-retry" class="main-btn">Try Again</button>
   <button id="btn-choose-level" class="sub-btn">Choose Level</button>
 </div>
 
@@ -49,6 +55,7 @@
 <script src="assets.js"></script>
 <script src="levels/level1.js"></script>
 <script src="levels/level2.js"></script>
+<script src="levels/level3.js"></script>
 <script src="audio/audio-data.js"></script>
 <script src="audio/audio.js"></script>
 <script src="vfx/vfx.js"></script>

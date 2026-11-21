@@ -79,24 +79,65 @@ function buildTiles() {
     }
     return c;
   });
-  wallT = [...Array(4)].map((_, v) => {
+
+  const theme = (L && L.theme) || "blue";
+  const Palettes = {
+    blue: {
+      bg: "#040c2b", topBevel: "#3d66e8", botBevel: "#06123a",
+      grad: ["#1f41ab", "#142b78", "#091748"],
+      scratch: "rgba(145,190,255,.65)",
+      border: "rgba(165,200,255,.45)",
+      rivet: ["#e2eeff", "#7292d5", "#1b2d56"],
+      accentGrad: ["#2d57d0", "#18328c", "#0c1a4d"]
+    },
+    purple: {
+      bg: "#18042b", topBevel: "#a855f7", botBevel: "#180628",
+      grad: ["#581c87", "#3b0764", "#200638"],
+      scratch: "rgba(244,114,182,.75)",
+      border: "rgba(232,121,249,.55)",
+      rivet: ["#fffbeb", "#ffd23f", "#b45309"],
+      accentGrad: ["#7e22ce", "#4c1d95", "#2e1065"]
+    },
+    emerald: {
+      bg: "#022415", topBevel: "#10b981", botBevel: "#031d12",
+      grad: ["#064e3b", "#022c22", "#011712"],
+      scratch: "rgba(110,231,183,.75)",
+      border: "rgba(52,211,153,.55)",
+      rivet: ["#f0fdf4", "#34d399", "#065f46"],
+      accentGrad: ["#047857", "#064e3b", "#022c22"]
+    }
+  };
+  const P = Palettes[theme] || Palettes.blue;
+
+  wallT = [...Array(6)].map((_, v) => {
     const c = mk(B, B), g = c.getContext("2d");
-    g.fillStyle = "#040c2b"; g.fillRect(0, 0, B, B);
+    g.fillStyle = P.bg; g.fillRect(0, 0, B, B);
     const p = B * .05;
-    g.fillStyle = "#3d66e8"; g.beginPath(); g.moveTo(0, 0); g.lineTo(B, 0); g.lineTo(B - p, p); g.lineTo(p, p); g.lineTo(p, B - p); g.lineTo(0, B); g.closePath(); g.fill();
-    g.fillStyle = "#06123a"; g.beginPath(); g.moveTo(B, 0); g.lineTo(B, B); g.lineTo(0, B); g.lineTo(p, B - p); g.lineTo(B - p, B - p); g.lineTo(B - p, p); g.closePath(); g.fill();
+    g.fillStyle = P.topBevel; g.beginPath(); g.moveTo(0, 0); g.lineTo(B, 0); g.lineTo(B - p, p); g.lineTo(p, p); g.lineTo(p, B - p); g.lineTo(0, B); g.closePath(); g.fill();
+    g.fillStyle = P.botBevel; g.beginPath(); g.moveTo(B, 0); g.lineTo(B, B); g.lineTo(0, B); g.lineTo(p, B - p); g.lineTo(B - p, B - p); g.lineTo(B - p, p); g.closePath(); g.fill();
     const ip = B * .13, iw = B - 2 * ip;
-    const gr = g.createLinearGradient(ip, ip, B - ip, B - ip); gr.addColorStop(0, "#1f41ab"); gr.addColorStop(.45, "#142b78"); gr.addColorStop(1, "#091748");
+    const isAccent = (v === 2 || v === 4);
+    const useGrad = isAccent ? P.accentGrad : P.grad;
+    const gr = g.createLinearGradient(ip, ip, B - ip, B - ip);
+    gr.addColorStop(0, useGrad[0]); gr.addColorStop(.45, useGrad[1]); gr.addColorStop(1, useGrad[2]);
     g.fillStyle = gr; rrect(g, ip, ip, iw, iw, B * .06); g.fill();
-    g.strokeStyle = "rgba(145,190,255,.58)"; g.lineWidth = Math.max(1.2, B * .026); g.lineCap = "round"; g.lineJoin = "round"; g.beginPath();
-    const cx = B * .5, ox = (v % 2 === 0 ? 1 : -1) * B * .04;
-    g.moveTo(cx - B * .08 + ox, B * .28); g.lineTo(cx + B * .06 + ox, B * .46); g.lineTo(cx - B * .03 + ox, B * .62); g.lineTo(cx + B * .07 + ox, B * .74); g.stroke();
-    g.strokeStyle = "rgba(165,200,255,.45)"; g.lineWidth = Math.max(1, B * .028); rrect(g, ip, ip, iw, iw, B * .06); g.stroke();
+
+    if (v === 1 || v === 3) {
+      g.strokeStyle = P.scratch; g.lineWidth = Math.max(1.2, B * .026); g.lineCap = "round"; g.lineJoin = "round"; g.beginPath();
+      const cx = B * .5, ox = (v % 2 === 0 ? 1 : -1) * B * .04;
+      g.moveTo(cx - B * .08 + ox, B * .28); g.lineTo(cx + B * .06 + ox, B * .46); g.lineTo(cx - B * .03 + ox, B * .62); g.lineTo(cx + B * .07 + ox, B * .74); g.stroke();
+    } else if (v === 4) {
+      // Reinforced Vault Bar
+      g.strokeStyle = P.scratch; g.lineWidth = Math.max(1, B * .03);
+      g.beginPath(); g.moveTo(ip + B * .06, B * .5); g.lineTo(B - ip - B * .06, B * .5); g.stroke();
+    }
+    g.strokeStyle = P.border; g.lineWidth = Math.max(1, B * .028); rrect(g, ip, ip, iw, iw, B * .06); g.stroke();
+
     const rv = B * .038, offs = [[ip * .52, ip * .52], [B - ip * .52, ip * .52], [ip * .52, B - ip * .52], [B - ip * .52, B - ip * .52]];
     offs.forEach(([rx, ry]) => {
       g.fillStyle = "rgba(0,0,20,.65)"; g.beginPath(); g.arc(rx + .8, ry + 1.2, rv * 1.2, 0, 7); g.fill();
       const rg = g.createRadialGradient(rx - rv * .35, ry - rv * .35, rv * .1, rx, ry, rv);
-      rg.addColorStop(0, "#e2eeff"); rg.addColorStop(.6, "#7292d5"); rg.addColorStop(1, "#1b2d56");
+      rg.addColorStop(0, P.rivet[0]); rg.addColorStop(.6, P.rivet[1]); rg.addColorStop(1, P.rivet[2]);
       g.fillStyle = rg; g.beginPath(); g.arc(rx, ry, rv, 0, 7); g.fill();
       g.fillStyle = "#fff"; g.beginPath(); g.arc(rx - rv * .3, ry - rv * .3, rv * .32, 0, 7); g.fill();
     });
@@ -324,8 +365,10 @@ function update(dt) {
     L.enemies.forEach((s, k) => { const [x, y] = sawAt(s, k + 9); if (near(x, y, 1.1, px, py)) hitHero(h, "Caught by an enemy!"); });
     L.lasers.forEach((l, k) => {
       if (l.disabled || !lOn(k)) return;
-      if (l[2] === "h" ? Math.abs(py - l[1]) < .8 && Math.abs(px - l[0]) < 1.6 : Math.abs(px - l[0]) < .8 && Math.abs(py - l[1]) < 1.6)
-        hitHero(h, "Laser zap!");
+      const hz = l[2] === "h";
+      const inX = hz ? (px >= l[0] - 2.5 && px <= l[0] + 2.5) : Math.abs(px - l[0]) < 0.95;
+      const inY = hz ? Math.abs(py - l[1]) < 0.95 : (py >= l[1] - 2.5 && py <= l[1] + 2.5);
+      if (inX && inY) hitHero(h, "Laser zap!");
     });
 
     // Star Coins
@@ -373,16 +416,46 @@ function update(dt) {
       }
     }
 
-    // Exit check
+    // Exit reach for individual living heroes
     if (h.i === L.exit[0] && h.j === L.exit[1] && h.t === 0) {
-      state = "won"; Snd.music(false); Snd.sfx("win"); const r = G.score / L.coins.length;
-      VFX.confetti(px, py, T);
-      show("Mission Complete!", (G.t / 1000).toFixed(1) + "s, " + G.score + " of " + L.coins.length + " stars collected!", r > .85 ? "★★★" : r > .55 ? "★★☆" : "★☆☆", "results");
+      if (!h.escaped) {
+        h.escaped = true;
+        const card = document.querySelector(`.ct[data-n="${h.id}"]`);
+        if (card) card.classList.add("escaped");
+        const living = [G.p1, G.p2].filter(p => p && !G.dead.has(p.id));
+        if (living.length > 1 && !living.every(p => p.escaped)) {
+          toast(`${h.name} reached Exit!`);
+        }
+      }
     }
 
     // Dust particles when moving
     const mv = !!h.pp && Math.hypot(px - h.pp[0], py - h.pp[1]) > 1e-3; h.pp = [px, py];
     if (mv && T > (h.dt || 0)) { h.dt = T + 130; const lk = h.look || [0, 0]; VFX.add("dust", px - lk[0] * .9, py - lk[1] * .9, T); }
+  }
+
+  // ALL LIVING HEROES MUST REACH EXIT TO WIN!
+  const living = [G.p1, G.p2].filter(p => p && !G.dead.has(p.id));
+  const allEscaped = living.length > 0 && living.every(h => h.escaped);
+  if (allEscaped && state !== "won") {
+    state = "won";
+    Snd.music(false);
+    Snd.sfx("win");
+    toast("★ ALL HEROES ESCAPED! VICTORY! ★");
+    const [p1x, p1y] = pos(G.p1);
+    VFX.confetti(p1x, p1y, T);
+    if (G.p2) { const [p2x, p2y] = pos(G.p2); VFX.confetti(p2x, p2y, T); }
+    VFX.add("ring", cen(...L.exit)[0], cen(...L.exit)[1], T, { c: "#22c55e" });
+    // NO POPUP MODAL! Screen stays 100% clean for seamless video recording!
+  }
+
+  if (state === "won") {
+    if (T - (G.lastWinVFX || 0) > 350) {
+      G.lastWinVFX = T;
+      const [ex, ey] = cen(...L.exit);
+      VFX.confetti(ex + (Math.random() - .5) * 6, ey + (Math.random() - .5) * 4, T);
+      fx("spark", ex + (Math.random() - .5) * 6, ey + (Math.random() - .5) * 6);
+    }
   }
 
   VFX.update(T); shake = Math.max(0, shake - dt / 350); ui();
@@ -552,6 +625,25 @@ function draw() {
       ctx.fillStyle = "#2bd9a4"; ctx.strokeStyle = "#053"; ctx.lineWidth = B * .05;
       ctx.beginPath(); ctx.moveTo(B * .42, 0); ctx.lineTo(-B * .28, -B * .3); ctx.lineTo(-B * .1, 0); ctx.lineTo(-B * .28, B * .3); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
     }
+  }
+
+  // On-Canvas Victory Banner (No modal popup!)
+  if (state === "won") {
+    ctx.save();
+    const font = getComputedStyle(document.body).getPropertyValue("--display") || "sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    const vy = ch * .22 + Math.sin(T / 250) * B * .08;
+    ctx.font = "900 " + Math.round(B * .62) + "px " + font;
+    ctx.shadowColor = "#ffd23f"; ctx.shadowBlur = B * .5;
+    ctx.strokeStyle = "#050b20"; ctx.lineWidth = B * .12;
+    ctx.fillStyle = "#ffd23f";
+    ctx.strokeText("ALL HEROES ESCAPED!", cw / 2, vy);
+    ctx.fillText("ALL HEROES ESCAPED!", cw / 2, vy);
+    ctx.font = "900 " + Math.round(B * .44) + "px " + font;
+    ctx.fillStyle = "#22c55e"; ctx.shadowColor = "#22c55e";
+    ctx.strokeText("★★★ VICTORY! ★★★", cw / 2, vy + B * .68);
+    ctx.fillText("★★★ VICTORY! ★★★", cw / 2, vy + B * .68);
+    ctx.restore();
   }
 }
 

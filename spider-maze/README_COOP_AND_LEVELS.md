@@ -1,6 +1,6 @@
 # Spider-Man & Ghost Spider: Cooperative Arcade Maze & Level System
 
-A complete technical and gameplay guide for the **Cooperative Duo System**, **Wall Switch & Gate Mechanics**, **Level Select Flow**, and **High-Definition Visual Engine** built for **Global Games with SK**.
+A complete technical and gameplay guide for the **Cooperative Duo System**, **Wall Switch & Gate Mechanics**, **Multi-Color Wall Themes**, **10-Star Balancing**, and **YouTube Shorts Safe Recording Guidelines** built for **Global Games with SK**.
 
 ---
 
@@ -10,30 +10,32 @@ A complete technical and gameplay guide for the **Cooperative Duo System**, **Wa
 - **Hero 1**: **Spider-Man** (`images/Spider_man_card_1024.png`)
 - **Hero 2**: **Ghost Spider (Gwen Stacy)** (`images/Ghost_Spider_card_1024.png`)
 
-### Cooperative Architecture:
-- In **Level 2 (Co-op Duo)**, both heroes are placed on the maze grid simultaneously:
-  - **Spider-Man Start**: Corridor Column 1, Row 0 (`[1, 0]`).
-  - **Ghost Spider Start**: Corridor Column 5, Row 0 (`[5, 0]`).
-- Both characters work together to overcome impossible obstacles:
-  - Spider-Man is initially trapped behind **Gate 1** and a death laser.
-  - Ghost Spider dodges spinning saw blades in her corridor to reach **Wall Switch 1**.
-  - Hitting Switch 1 blows open Gate 1 and disables the laser for Spider-Man!
-  - Spider-Man then pushes through to **Wall Switch 2**, blowing open Gate 2 for Ghost Spider!
-  - Both heroes navigate to the shared exit at the bottom (`[3, 12]`) to complete the mission!
+### Cooperative Mechanics:
+- Both heroes are placed on the maze grid simultaneously:
+  - **Level 2 (Co-op Duo)**:
+    - **Spider-Man Start**: Corridor Column 1, Row 0 (`[1, 0]`).
+    - **Ghost Spider Start**: Corridor Column 5, Row 0 (`[5, 0]`).
+    - Spider-Man is initially barricaded behind Gate 1. Ghost Spider navigates through saw corridors to press **Wall Switch 1**, unlocking Gate 1 and deactivating Laser 1.
+    - Spider-Man then hits **Wall Switch 2**, unlocking Gate 2 for Ghost Spider.
+    - Together they hit **Wall Switch 3**, unlocking the final reinforced security vault into the exit.
+  - **Level 3 (Matrix Gauntlet)**:
+    - High-density matrix maze with 3 active laser fences, cross-corridor saw blades, and dual switches.
+    - Spider-Man disables the western laser fence to let Ghost Spider access Switch 2.
+    - Ghost Spider opens the southern corridor vault gate for Spider-Man to reach the extraction zone.
 
 ---
 
 ## 🎮 2. Hero Controls & Switching System
 
-As requested, **no numbers ("1" or "2") appear on the game screen** to ensure the recording remains 100% clean and cinematic for YouTube Shorts.
+**No intrusive numbers ("1" or "2") appear on the game recording area**, keeping the video 100% clean and cinematic for YouTube Shorts:
 
-| Input | Action | Feedback on Screen |
+| Input | Action | In-Game Visual Feedback |
 |---|---|---|
-| **Press `1`** | Selects **Spider-Man** | Spider-Man avatar in top bar and in-game token gets a glowing golden pulse halo. |
-| **Press `2`** | Selects **Ghost Spider** | Ghost Spider avatar in top bar and in-game token gets a glowing golden pulse halo. |
-| **Click Avatar** | Clicking on Spider-Man or Ghost Spider's card in the header instantly switches to that hero. | Smooth camera pan to selected character. |
-| **Mouse / Touch Drag** | Dragging up, down, left, or right directs the **currently active hero**. | Active hero moves along corridors with dust particles. |
-| **WASD / Arrow Keys** | Move active hero using physical keys. | Responsive smooth corridor navigation. |
+| **Press `1`** | Selects **Spider-Man** | Spider-Man card in header highlights with golden aura; in-game hero glows with bright selector ring. |
+| **Press `2`** | Selects **Ghost Spider** | Ghost Spider card in header highlights with golden aura; in-game hero glows with bright selector ring. |
+| **Click Avatar** | Clicking either hero card in the top bar | Instantly switches active control and smoothly centers the camera. |
+| **Mouse / Touch Drag** | Dragging up, down, left, right | Drives the currently active hero through corridors with dynamic dust particles. |
+| **WASD / Arrow Keys** | Physical keyboard movement | Smooth, responsive grid-aligned corridor navigation. |
 
 ---
 
@@ -42,16 +44,13 @@ As requested, **no numbers ("1" or "2") appear on the game screen** to ensure th
 Inspired by classic cartoon slapstick mazes (Tom & Jerry style):
 
 ### 1. Wall Switch (`switches`):
-- Mounted on corridor walls with a 3D brushed metal plate and riveted rim.
-- **Unpressed**: Neon emerald green LED button (`#00e676`) with an expanding ambient aura pulse.
-- **Pressed**: Recessed crimson red button (`#ff1744`), playing an arcade mechanical click sound.
-- Positioned in block coordinates:
-  - `sw1`: `[20, 14]` (Ghost Spider's sector). Opens `gate1` & shuts down `laser1`.
-  - `sw2`: `[8, 20]` (Spider-Man's sector). Opens `gate2`.
+- Mounted on corridor walls with a 3D brushed metallic plate and brass rivets.
+- **Unpressed**: High-luminance neon emerald green LED button (`#00e676`) with an expanding ambient aura pulse.
+- **Pressed**: Recessed crimson red button (`#ff1744`), triggering an arcade mechanical click sound.
 
 ### 2. Security Vault Gates (`gates`):
-- Heavy steel security shutters with high-contrast yellow & black caution diagonal hazard chevrons and cyan status rim.
-- Impassable wall blocks while closed (`WALL[y][x] = 1`).
+- Heavy steel security shutters with yellow & black diagonal caution hazard chevrons and cyan status rim.
+- Impassable wall blocks while locked (`WALL[y][x] = 1`).
 - When unlocked by a switch:
   - **Explosion & Smoke Puff**: Spawns cartoon smoke dust clouds (`VFX.add("cloud", ...)`) and explosive sparks (`VFX.add("spark", ...)`).
   - Screen shake effect (`shake = 0.85`).
@@ -60,63 +59,71 @@ Inspired by classic cartoon slapstick mazes (Tom & Jerry style):
 
 ---
 
-## 📺 4. Menu & Level Selection Flow
+## 🎨 4. Multi-Color Wall Themes & Block Variety
 
-The start modal (`#ov`) now features a clean two-step selection flow:
+Walls are no longer a single flat color. Each level features a distinct theme and rich block variations:
 
-1. **Step 1: Screen Aspect Ratio Selection**:
-   - 📱 **Portrait (9:16)**: Formatted for YouTube Shorts and mobile screen recording.
-   - 🖥️ **Landscape (16:9)**: Formatted for YouTube long-form desktop video.
-   - Tap **"Select Level ➔"** to proceed.
+| Level | Theme Name | Primary Palette | Accent Bevels | Block Patterns |
+|---|---|---|---|---|
+| **Level 1** | **Cobalt Blue** | `#1e3a8a` / `#172554` | `#38bdf8` (Cyan Neon) | Beveled steel, Riveted alloy, Energy cut |
+| **Level 2** | **Cyberpunk Purple** | `#581c87` / `#3b0764` | `#c084fc` / `#f59e0b` (Gold rivets) | Reinforced vault, 3D cross-cut, Neon rim |
+| **Level 3** | **Matrix Emerald** | `#064e3b` / `#022c22` | `#34d399` (Matrix Glow) | Cyber circuit, Energy grid, Titanium brace |
 
-2. **Step 2: Mission / Level Select**:
-   - **Level 1**: *Solo Escape (15 Stars Challenge)* — Spider-Man solo survival against saw blades & lasers.
-   - **Level 2**: *Spider-Man & Ghost Spider (Co-op Duo)* — 2-Hero switch maze with wall buttons and secret gates.
-   - **"← Back to Screen Ratio"** button allows easily changing video aspect ratios.
-
-3. **In-Game Access**:
-   - Pressing the top menu hamburger button (`#mn`) re-opens the Level Selection screen anytime without refreshing.
-   - On Win or GameOver, players can choose **"Play Again"** or **"Choose Level"**.
-
----
-
-## 💎 5. Ultra-High Visual Clarity Engine
-
-To ensure recordings are crystal clear and never blurry:
-1. **Target 1080p Internal Render Buffer**:
-   - In `resize()`, the canvas resolution is scaled to at least **1080px wide** for 9:16 and **1920px wide** for 16:9:
-     ```javascript
-     const minW = ratio === "9:16" ? 1080 : 1920;
-     const dpr = Math.max(window.devicePixelRatio || 1, minW / s.clientWidth, 2.25);
-     cw = cv.width = Math.round(s.clientWidth * dpr);
-     ch = cv.height = Math.round(s.clientHeight * dpr);
-     ```
-2. **Native 1024×1024 Sprite Cards**:
-   - Spider-Man and Ghost Spider tokens use official 1024×1024 PNG assets (`Spider_man_card_1024.png` and `Ghost_Spider_card_1024.png`).
-3. **Beveled 3D Wall Blocks**:
-   - High-contrast specular bevels, metallic rivets, and corner bolts rendered at native high resolution.
-4. **Neon Bloom Lasers**:
-   - Multi-layer glow with electric white-hot center core.
+The wall generation engine (`buildTiles()`) renders 6 distinct block variants:
+1. **Classic Beveled Metal**: Inner shadow with specular light highlights.
+2. **Energy Line Inset**: High-tech diagonal laser cut through the core.
+3. **Reinforced Alloy Plate**: Heavy dark center plate with dual contrast borders.
+4. **Vault Security Bars**: Triple horizontal steel bars with illuminated grooves.
+5. **Heavy Riveted Flange**: Quad corner bolts for industrial vault realism.
 
 ---
 
-## 📋 6. Adding More Cooperative Levels in Future
+## ⭐ 5. Strictly 10 Stars & Safe Item Spacing
 
-To create a new level with switches and gates:
-1. Create `levels/level3.js`.
-2. Define start positions:
-   ```javascript
-   start: [1, 0],   // Hero 1 (Spider-Man)
-   start2: [5, 0],  // Hero 2 (Ghost Spider)
-   exit: [3, 12],
-   ```
-3. Add switch and gate objects:
-   ```javascript
-   switches: [
-     { id: "sw1", x: 20, y: 14, color: "#00e676", targets: ["gate1"], msg: "Door 1 Opened!" }
-   ],
-   gates: [
-     { id: "gate1", blocks: [[4, 12], [5, 12]], open: false }
-   ]
-   ```
-4. Include `<script src="levels/level3.js"></script>` in `index.html` and add a level card in `#step-levels`.
+- **Balanced Collection**: Exactly **10 Stars** are placed per level, spread far apart across distinct corridors.
+- **Zero Item Overlap**: Stars and Shield Bubbles never spawn on the same cell, ensuring clear gameplay readability.
+- **Progress Counter**: Header cleanly shows `★ X / 10` aligned with channel branding.
+
+---
+
+## 🏆 6. Dual-Hero Exit & Green Tick Celebration
+
+To ensure screen recordings are never ruined by sudden popup dialogs:
+1. **Both Living Heroes Must Escape**: In co-op levels, both Spider-Man and Ghost Spider must reach the exit cell `[3, 12]`.
+2. **Green Tick (`✔`) Avatar Badges**:
+   - As each hero reaches the exit, their header card lights up with an animated emerald border and a bold glowing **Green Tick (`✔`)**.
+3. **No Win Modal Popups**:
+   - Victory triggers directly on the canvas with vibrant confetti showers, golden star bursts, and floating victory banners (`ALL HEROES ESCAPED!`).
+   - The recording screen remains completely clean without modal overlays blocking the view.
+
+---
+
+## 🎵 7. YouTube Shorts Audio & Copyright Guide
+
+### Why Did "NO BATIDÃO" Get Globally Blocked?
+When you add copyrighted commercial music (like "NO BATIDÃO - ZXKAI") directly into video editing software (CapCut, Premiere, InShot) and render it into the video file, **YouTube's automated Content ID system scans the audio file on upload**. If the copyright holder does not allow third-party MP4 uploads with their audio, YouTube applies an immediate **Global Block**.
+
+### How to Fix the Current Blocked Short:
+1. Open **YouTube Studio** on your computer.
+2. Click **Content** > find the blocked video **"Spider Man Maze Game"**.
+3. Hover over the red **"Blocked"** status and click **"See Details"**.
+4. Click the **"Take Action"** button:
+   - **Option A (Instant Unblock)**: Click **"Mute song only"**. YouTube will automatically mute the background song while preserving the video, instantly removing the global block.
+   - **Option B**: Click **"Replace song"** and choose a royalty-free track from the YouTube Audio Library.
+
+### How Top Creators Legally Use "NO BATIDÃO" on YouTube Shorts:
+To use trending songs **without copyright claims and with full monetization**:
+1. **Record the Game Video with ONLY Sound Effects**:
+   - The game code has background music disabled by default.
+   - Record the gameplay with crisp arcade SFX (hits, shield pickups, star dings, laser hums).
+2. **Export Video WITHOUT Background Song**:
+   - Keep your exported MP4 video audio clean (only game SFX).
+3. **Add the Song INSIDE the YouTube Mobile App**:
+   - Open YouTube on your phone and tap **"+" > "Create a Short"**.
+   - Select your recorded video.
+   - Tap **"Add sound"** at the top of the screen.
+   - Search for **"NO BATIDÃO - ZXKAI"** in the YouTube Shorts Audio Library.
+   - Align the music drop with your gameplay moments.
+   - Adjust the **Volume Balance**: Set original game sound to **80%** and added music to **60%**.
+   - Tap **Next** and publish!
+4. **Why this works**: YouTube pays license royalties directly to music artists for tracks selected through the in-app "Add sound" library, granting creators 100% copyright clearance!

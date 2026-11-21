@@ -21,7 +21,13 @@ An arcade-style 2D physics maze escape game built with HTML5 Canvas, Web Audio A
 4. **Channel Header & HUD**:
    - Prominent Spider-Man avatar badge ($88\text{px}$).
    - Channel brand title: **Global Games** in solid black (`#000000`), **SK** in vivid arcade red (`#ff2233`).
-   - Clean star counter displaying strictly collected stars out of 15 (`★ 0 / 15`).
+   - Clean star counter displaying strictly collected stars out of 10 (`★ 0 / 10`).
+
+5. **3 Progressive Maze Levels & Dynamic Multi-Color Wall Themes**:
+   - **Level 1 (Solo Escape)**: Cobalt Blue Theme with 10 stars and laser traps.
+   - **Level 2 (Co-op Duo)**: Cyberpunk Purple Theme with 10 stars, 3 wall switches, and animated security gates.
+   - **Level 3 (Matrix Gauntlet)**: Matrix Emerald Theme with 10 stars, high-voltage laser arrays, and dual-hero coordination.
+   - **Dual-Hero Escape & Green Tick**: Both heroes must reach the exit in co-op mode; victorious heroes receive an animated Green Tick (`✔`) badge without intrusive modal popups ruining the recording frame.
 
 ---
 
