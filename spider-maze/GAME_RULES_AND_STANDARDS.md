@@ -187,6 +187,8 @@ Hero 1 (Spider-Man) and Hero 2 (Ghost Spider) **must never have identical or sym
 
 1. **Long-Range Line-of-Sight Aiming with Key `8` (2–3 Steps Reach)**:
    - When facing any saw wheel, wall blade, laser, or locked gate, pressing **`8`** targets it directly along the hero's corridor line of sight up to **$8.5\text{ blocks}$ ($2\text{ to }3\text{ full corridor steps}$)** away!
+   - **Immediate Input Orientation**: Pressing or holding any direction key (Arrow keys, D-pad, swipe) instantly turns the hero's aim toward that direction even while stationary or facing a corner.
+   - **Strict Corridor Alignment & Line-of-Sight (`hasLineOfSight`)**: Targets must be within the same corridor (`side <= 1.25`) and have an unobstructed line of sight. Bombs will **NEVER** lock onto obstacles through solid walls or in perpendicular/parallel rooms above or below.
    - Even from 2 steps back, the bomb flies in an arched parabolic trajectory directly to the target obstacle.
    - If no target is present, the bomb travels 2 steps forward ($6.0\text{ blocks}$) down the hallway until it hits a solid wall.
 2. **Full Area-of-Effect (AOE) Detonation ($R \le 4.2\text{ blocks}$)**:

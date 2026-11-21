@@ -386,18 +386,38 @@ function hitHero(h, msg) {
   toast(msg);
 }
 
+function hasLineOfSight(x0, y0, x1, y1, isGate) {
+  const dist = Math.hypot(x1 - x0, y1 - y0);
+  if (dist < 0.3) return true;
+  const steps = Math.max(4, Math.ceil(dist * 4));
+  const maxT = isGate ? 0.82 : 0.92;
+  for (let s = 1; s <= steps; s++) {
+    const t = s / steps;
+    if (t > maxT) break;
+    const rx = x0 + (x1 - x0) * t;
+    const ry = y0 + (y1 - y0) * t;
+    if (solid(Math.floor(rx), Math.floor(ry))) {
+      return false;
+    }
+  }
+  return true;
+}
+
 function throwHeroBomb(h) {
   const [px, py] = pos(h);
-  let lk = h.look || [0, 1];
+  // Prioritize active input direction, then character facing direction
+  const curIn = held();
+  let lk = (curIn && DIR[curIn]) ? DIR[curIn] : (h.look || [0, 1]);
   if (lk[0] === 0 && lk[1] === 0) lk = [0, 1];
   const mag = Math.hypot(lk[0], lk[1]) || 1;
-  const nx = lk[0] / mag, ny = lk[1] / mag;
+  const nx = Math.round(lk[0] / mag), ny = Math.round(lk[1] / mag);
+  h.look = [nx, ny];
 
   // Default target: throw forward ~2 steps (up to 6.0 blocks) down the corridor
   let maxForward = 6.0;
   for (let s = 1; s <= 6; s++) {
-    const cx = Math.round(px + nx * s);
-    const cy = Math.round(py + ny * s);
+    const cx = Math.floor(px + nx * s);
+    const cy = Math.floor(py + ny * s);
     if (solid(cx, cy)) {
       maxForward = Math.max(1.8, s - 0.4);
       break;
@@ -407,64 +427,56 @@ function throwHeroBomb(h) {
   let targetY = py + ny * maxForward;
   let targetType = "ground", targetObj = null;
 
-  // Gather potential targets along hero's line of fire (reach up to 8.5 blocks / ~3 steps)
+  // Gather potential targets along hero's line of fire (reach up to 8.5 blocks / ~2-3 steps)
   const candidates = [];
+
+  function testCandidate(type, obj, tx, ty, isGate = false) {
+    const fwd = (tx - px) * nx + (ty - py) * ny;
+    const side = Math.abs((tx - px) * -ny + (ty - py) * nx);
+    const maxSide = isGate ? 1.35 : 1.25;
+    // Must be in FRONT (fwd >= 0.5), within corridor reach (fwd <= 8.5), inside same hallway (side <= maxSide),
+    // and have a direct unobstructed line of sight (no solid walls blocking the path)
+    if (fwd >= 0.5 && fwd <= 8.5 && side <= maxSide) {
+      if (hasLineOfSight(px, py, tx, ty, isGate)) {
+        candidates.push({ type, obj, x: tx, y: ty, dist: Math.hypot(tx - px, ty - py), fwd });
+      }
+    }
+  }
 
   // 1. Saws
   (G.saws || []).forEach((sObj, k) => {
     if (sObj.destroyed) return;
     const [sx, sy] = sawAt(sObj.data, k);
+    testCandidate("saw", sObj, sx, sy, false);
     const s = sObj.data;
-    const fwd = (sx - px) * nx + (sy - py) * ny;
-    const side = Math.abs((sx - px) * -ny + (sy - py) * nx);
-    const dist = Math.hypot(sx - px, sy - py);
-    // Also check patrol endpoints
-    const fwdStart = (s[0] - px) * nx + (s[1] - py) * ny;
-    const fwdEnd = (s[2] - px) * nx + (s[3] - py) * ny;
-    if ((fwd >= 0.5 && fwd <= 8.5 && side <= 2.2) || dist <= 2.5 || (fwdStart >= 0.5 && fwdStart <= 8.5) || (fwdEnd >= 0.5 && fwdEnd <= 8.5)) {
-      candidates.push({ type: "saw", obj: sObj, x: sx, y: sy, dist, fwd: Math.max(0.5, fwd) });
-    }
+    testCandidate("saw", sObj, (s[0] + s[2]) / 2, (s[1] + s[3]) / 2, false);
+    testCandidate("saw", sObj, s[0], s[1], false);
+    testCandidate("saw", sObj, s[2], s[3], false);
   });
 
   // 2. Wall Saws
   (G.wsaws || []).forEach(wObj => {
     if (wObj.destroyed) return;
     const [wx, wy] = wsPos(wObj.data);
-    const fwd = (wx - px) * nx + (wy - py) * ny;
-    const side = Math.abs((wx - px) * -ny + (wy - py) * nx);
-    const dist = Math.hypot(wx - px, wy - py);
-    if ((fwd >= 0.5 && fwd <= 8.5 && side <= 2.2) || dist <= 2.5) {
-      candidates.push({ type: "wsaw", obj: wObj, x: wx, y: wy, dist, fwd: Math.max(0.5, fwd) });
-    }
+    testCandidate("wsaw", wObj, wx, wy, false);
   });
 
   // 3. Lasers
   (G.lasers || []).forEach(lObj => {
     if (lObj.destroyed || lObj.disabled) return;
     const [lx, ly] = lObj.data;
-    const fwd = (lx - px) * nx + (ly - py) * ny;
-    const side = Math.abs((lx - px) * -ny + (ly - py) * nx);
-    const dist = Math.hypot(lx - px, ly - py);
-    if ((fwd >= 0.5 && fwd <= 8.5 && side <= 2.2) || dist <= 2.5) {
-      candidates.push({ type: "laser", obj: lObj, x: lx, y: ly, dist, fwd: Math.max(0.5, fwd) });
-    }
+    testCandidate("laser", lObj, lx, ly, false);
   });
 
   // 4. Locked Gates
   (G.gates || []).forEach(gate => {
     if (gate.open) return;
     for (const [gx, gy] of gate.blocks) {
-      const cx = gx + 0.5, cy = gy + 0.5;
-      const fwd = (cx - px) * nx + (cy - py) * ny;
-      const side = Math.abs((cx - px) * -ny + (cy - py) * nx);
-      const dist = Math.hypot(cx - px, cy - py);
-      if ((fwd >= 0.5 && fwd <= 8.5 && side <= 2.2) || dist <= 2.5) {
-        candidates.push({ type: "gate", obj: gate, x: cx, y: cy, dist, fwd: Math.max(0.5, fwd) });
-      }
+      testCandidate("gate", gate, gx + 0.5, gy + 0.5, true);
     }
   });
 
-  // Pick closest obstacle in the line of fire
+  // Pick closest obstacle in the direct line of fire
   if (candidates.length > 0) {
     candidates.sort((a, b) => a.fwd - b.fwd || a.dist - b.dist);
     const best = candidates[0];
@@ -573,6 +585,7 @@ function update(dt) {
   }
 
   if (v && !G.dead.has(p.id)) {
+    p.look = [v[0], v[1]];
     let rem = SPEED * dt / 3000;
     if (!ctl.isHeld) {
       const allowed = Math.max(0, 0.25 - ctl.stepMoved);
@@ -1599,6 +1612,7 @@ addEventListener("keydown", e => {
   }
   const m = km(e); if (!m) return;
   e.preventDefault(); if (!ctl.key.includes(m)) ctl.key.push(m);
+  if (G && G.p && DIR[m]) G.p.look = [DIR[m][0], DIR[m][1]];
 });
 addEventListener("keyup", e => { const m = km(e); if (m) ctl.key = ctl.key.filter(k => k !== m); });
 addEventListener("blur", () => { ctl.key = []; ctl.ptr = ctl.pad = null; });
@@ -1609,13 +1623,19 @@ cv.addEventListener("pointermove", e => {
   if (e.pointerId !== pid) return;
   const dx = e.clientX - ox0, dy = e.clientY - oy0;
   ctl.ptr = Math.max(Math.abs(dx), Math.abs(dy)) < 14 ? null : Math.abs(dx) > Math.abs(dy) ? dx > 0 ? "right" : "left" : dy > 0 ? "down" : "up";
+  if (G && G.p && ctl.ptr && DIR[ctl.ptr]) G.p.look = [DIR[ctl.ptr][0], DIR[ctl.ptr][1]];
 });
 const endP = e => { if (e.pointerId === pid) { pid = null; ctl.ptr = null; } };
 cv.addEventListener("pointerup", endP); cv.addEventListener("pointercancel", endP);
 
 [["u", "up"], ["l", "left"], ["d", "down"], ["r", "right"]].forEach(([i, d]) => {
   const b = $(i), up = () => { if (ctl.pad === d) ctl.pad = null; };
-  b.addEventListener("pointerdown", e => { e.preventDefault(); ctl.pad = d; b.setPointerCapture(e.pointerId); });
+  b.addEventListener("pointerdown", e => {
+    e.preventDefault();
+    ctl.pad = d;
+    if (G && G.p && DIR[d]) G.p.look = [DIR[d][0], DIR[d][1]];
+    b.setPointerCapture(e.pointerId);
+  });
   b.addEventListener("pointerup", up); b.addEventListener("pointercancel", up); b.addEventListener("lostpointercapture", up);
 });
 
