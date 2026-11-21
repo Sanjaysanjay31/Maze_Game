@@ -792,6 +792,7 @@ $("btn-back-ratio").addEventListener("click", () => { showMenu("ratio"); });
 
 document.querySelectorAll(".lvl-btn, .lvl-card").forEach(el => {
   el.addEventListener("click", e => {
+    e.stopPropagation();
     const card = el.closest(".lvl-card") || el;
     const lvlIdx = parseInt(card.dataset.lvl || "0", 10);
     loadLevel(lvlIdx);
