@@ -220,10 +220,11 @@ function drawMini() {
   const mh = Math.min(ch * .2, B * 2.4), mw = mh * W / H, mx = cw - mw - B * .2, my = hudB + B * .15, q = mw / W, r = Math.max(2.5, q * 1.6); ctx.save();
   rrect(ctx, mx - 4, my - 4, mw + 8, mh + 8, B * .15); ctx.fillStyle = "rgba(8,18,56,.9)"; ctx.fill(); ctx.strokeStyle = "#ffd23f"; ctx.lineWidth = 3; ctx.stroke(); ctx.clip(); ctx.drawImage(mini, mx, my, mw, mh);
   const P = (x, y) => [mx + x * q, my + y * q], dot = (x, y, rr, c, s) => { const [a, b] = P(x, y); ctx.fillStyle = c; ctx.beginPath(); ctx.arc(a, b, rr, 0, 7); ctx.fill(); if (s) { ctx.strokeStyle = s; ctx.lineWidth = 1.5; ctx.stroke(); } };
-  L.lasers.forEach(l => { if (l.disabled) return; const [a, b] = P(l[0], l[1]); ctx.fillStyle = l[2] === "h" ? "#ff2d44" : "#2f8cff"; ctx.fillRect(a - r, b - r, r * 2, r * 2); });
-  L.saws.forEach((s, k) => { const [x, y] = sawAt(s, k); dot(x, y, r * 1.2, "#d6dce8", "#222"); });
-  L.wsaws.forEach(w => { const [x, y] = wsPos(w); dot(x, y, r * 1.3, "#ff7a1a", "#5a2a00"); });
+  (G.lasers || []).forEach(lObj => { if (lObj.destroyed || lObj.disabled) return; const l = lObj.data, [a, b] = P(l[0], l[1]); ctx.fillStyle = l[2] === "h" ? "#ff2d44" : "#2f8cff"; ctx.fillRect(a - r, b - r, r * 2, r * 2); });
+  (G.saws || []).forEach((sObj, k) => { if (!sObj.destroyed) { const [x, y] = sawAt(sObj.data, k); dot(x, y, r * 1.2, "#d6dce8", "#222"); } });
+  (G.wsaws || []).forEach(wObj => { if (!wObj.destroyed) { const [x, y] = wsPos(wObj.data); dot(x, y, r * 1.3, "#ff7a1a", "#5a2a00"); } });
   L.enemies.forEach((s, k) => { const [x, y] = sawAt(s, k + 9); dot(x, y, r * 1.3, "#e5243a", "#fff"); });
+  (G.bombs || []).forEach(b => { if (!b.got) dot(b.x, b.y, r * 1.1, "#f59e0b", "#000"); });
   G.shields.forEach(s => { if (!s.got) dot(s.x, s.y, r * 1.1, "#58b8ff", "#fff"); });
   G.bub.forEach(s => { if (!s.got) { const [a, b] = P(s.x, s.y); ctx.fillStyle = "#19b94a"; ctx.fillRect(a - r * 1.3, b - r * .4, r * 2.6, r * .8); ctx.fillRect(a - r * .4, b - r * 1.3, r * .8, r * 2.6); } });
   (G.switches || []).forEach(sw => { dot(sw.x, sw.y, r * 1.2, sw.active ? "#ff1744" : "#00e676", "#fff"); });
@@ -238,11 +239,11 @@ const cen = (i, j) => [3 * i + 2, 3 * j + 2];
 
 function newGame() {
   const [si, sj] = L.start;
-  const p1 = { i: si, j: sj, bi: si, bj: sj, t: 0, last: [si, sj], hp: MAXHP, id: "spiderman", name: "Spider-Man", shield: 0, sh1: 0, inv: 0, blk: -1e9, look: null, pp: null, dt: 0 };
+  const p1 = { i: si, j: sj, bi: si, bj: sj, t: 0, last: [si, sj], hp: MAXHP, id: "spiderman", name: "Spider-Man", shield: 0, sh1: 0, bombs: 0, inv: 0, blk: -1e9, look: null, pp: null, dt: 0 };
   let p2 = null;
   if (L.start2) {
     const [s2i, s2j] = L.start2;
-    p2 = { i: s2i, j: s2j, bi: s2i, bj: s2j, t: 0, last: [s2i, s2j], hp: MAXHP, id: "gwen", name: "Ghost Spider", shield: 0, sh1: 0, inv: 0, blk: -1e9, look: null, pp: null, dt: 0 };
+    p2 = { i: s2i, j: s2j, bi: s2i, bj: s2j, t: 0, last: [s2i, s2j], hp: MAXHP, id: "gwen", name: "Ghost Spider", shield: 0, sh1: 0, bombs: 0, inv: 0, blk: -1e9, look: null, pp: null, dt: 0 };
   }
   G = {
     dead: new Set(),
@@ -255,8 +256,12 @@ function newGame() {
     switches: (L.switches || []).map(s => ({ ...s, active: false })),
     gates: (L.gates || []).map(g => ({ ...g, open: false })),
     coins: L.coins.map((c, k) => ({ x: c[0], y: c[1], got: 0, ph: k })),
+    bombs: (L.bombs || []).map(b => ({ x: b[0], y: b[1], got: 0 })),
     bub: L.bubbles.map(b => ({ x: b[0], y: b[1], got: 0 })),
-    shields: L.shields.map(b => ({ x: b[0], y: b[1], got: 0 }))
+    shields: L.shields.map(b => ({ x: b[0], y: b[1], got: 0 })),
+    saws: (L.saws || []).map(s => ({ data: s, destroyed: false })),
+    wsaws: (L.wsaws || []).map(w => ({ data: w, destroyed: false })),
+    lasers: (L.lasers || []).map(l => ({ data: l, disabled: false, destroyed: false }))
   };
   // Re-lock gates
   G.gates.forEach(g => {
@@ -264,7 +269,6 @@ function newGame() {
       g.blocks.forEach(([gx, gy]) => { if (WALL[gy]) WALL[gy][gx] = 1; });
     }
   });
-  (L.lasers || []).forEach(l => l.disabled = false);
   T = 0; VFX.clear(); GameAudio.stopLoops();
   const [x, y] = pos(G.p); camX = x; camY = y;
   ui();
@@ -320,6 +324,16 @@ function triggerDefeat(reason) {
 
 function checkCoopDefeat() {
   if (!G.p2) return false;
+  const living = [G.p1, G.p2].filter(p => p && !G.dead.has(p.id));
+  if (living.length === 0) {
+    triggerDefeat("ALL HEROES OUT OF HEALTH!");
+    return true;
+  }
+  const hasBomb = living.some(h => (h.bombs || 0) > 0);
+  const bombAvailable = (G.bombs || []).some(b => !b.got);
+  if (hasBomb || bombAvailable) {
+    return false; // Can collect a bomb and blow open the blocker wall!
+  }
   for (const gate of (G.gates || [])) {
     if (!gate.open) {
       const sw = (G.switches || []).find(s => s.targets && s.targets.includes(gate.id));
@@ -328,11 +342,6 @@ function checkCoopDefeat() {
         return true;
       }
     }
-  }
-  const living = [G.p1, G.p2].filter(p => p && !G.dead.has(p.id));
-  if (living.length === 0) {
-    triggerDefeat("ALL HEROES OUT OF HEALTH!");
-    return true;
   }
   return false;
 }
@@ -401,16 +410,101 @@ function update(dt) {
   for (const h of heroes) {
     if (G.dead.has(h.id)) continue;
     const [px, py] = pos(h);
-    // Hazards
-    L.saws.forEach((s, k) => { const [x, y] = sawAt(s, k); if (near(x, y, 1.05, px, py)) hitHero(h, "Sliced by a blade!"); });
-    L.wsaws.forEach(w => { const [x, y] = wsPos(w); if (near(x, y, 1.05, px, py)) hitHero(h, "Cut by a wall blade!"); });
-    L.enemies.forEach((s, k) => { const [x, y] = sawAt(s, k + 9); if (near(x, y, 1.1, px, py)) hitHero(h, "Caught by an enemy!"); });
-    L.lasers.forEach((l, k) => {
-      if (l.disabled || !lOn(k)) return;
+    // Collectible Bombs (💣)
+    for (const b of (G.bombs || [])) {
+      if (!b.got && Math.hypot(b.x - px, b.y - py) < 1.4) {
+        b.got = 1;
+        h.bombs = (h.bombs || 0) + 1;
+        fx("spark", b.x, b.y);
+        VFX.text(b.x, b.y, "💣 +1", T);
+        GameAudio.play("coin", { vol: 1.4 });
+        toast(`${h.name} collected a Bomb! 💣`);
+      }
+    }
+
+    // Bombs destroying locked gates (emergency rescue or route blast!)
+    for (const gate of (G.gates || [])) {
+      if (!gate.open && (h.bombs || 0) > 0) {
+        const nearGate = gate.blocks.some(([gx, gy]) => Math.hypot(gx - px, gy - py) < 1.45);
+        if (nearGate) {
+          h.bombs--;
+          gate.open = true;
+          for (const [gx, gy] of gate.blocks) {
+            if (WALL[gy]) WALL[gy][gx] = 0;
+            fx("cloud", gx, gy);
+            VFX.cracker(gx, gy, T);
+          }
+          shadow = buildShadow();
+          shake = 1.4;
+          GameAudio.play("lose", { vol: 1.2 });
+          toast("Gate Blown Open with Bomb! 💥");
+        }
+      }
+    }
+
+    // Hazards (Saw Blades, Wall Saws, Lasers)
+    (G.saws || []).forEach((sObj, k) => {
+      if (sObj.destroyed) return;
+      const [x, y] = sawAt(sObj.data, k);
+      if (near(x, y, 1.25, px, py)) {
+        if ((h.bombs || 0) > 0) {
+          h.bombs--;
+          sObj.destroyed = true;
+          VFX.cracker(x, y, T);
+          VFX.confetti(x, y, T);
+          fx("cloud", x, y);
+          shake = 1.3;
+          GameAudio.play("lose", { vol: 1.2 });
+          toast("Saw Wheel Destroyed! 💥");
+        } else if (near(x, y, 1.05, px, py)) {
+          hitHero(h, "Sliced by a blade!");
+        }
+      }
+    });
+
+    (G.wsaws || []).forEach(wObj => {
+      if (wObj.destroyed) return;
+      const [x, y] = wsPos(wObj.data);
+      if (near(x, y, 1.25, px, py)) {
+        if ((h.bombs || 0) > 0) {
+          h.bombs--;
+          wObj.destroyed = true;
+          VFX.cracker(x, y, T);
+          fx("cloud", x, y);
+          shake = 1.3;
+          GameAudio.play("lose", { vol: 1.2 });
+          toast("Wall Blade Destroyed! 💥");
+        } else if (near(x, y, 1.05, px, py)) {
+          hitHero(h, "Cut by a wall blade!");
+        }
+      }
+    });
+
+    L.enemies.forEach((s, k) => {
+      const [x, y] = sawAt(s, k + 9);
+      if (near(x, y, 1.1, px, py)) hitHero(h, "Caught by an enemy!");
+    });
+
+    (G.lasers || []).forEach((lObj, k) => {
+      if (lObj.destroyed || lObj.disabled || !lOn(k)) return;
+      const l = lObj.data;
       const hz = l[2] === "h";
       const inX = hz ? Math.abs(px - l[0]) <= 1.25 : Math.abs(px - l[0]) <= 0.8;
       const inY = hz ? Math.abs(py - l[1]) <= 0.8 : Math.abs(py - l[1]) <= 1.25;
-      if (inX && inY) hitHero(h, "Laser zap!");
+      if (inX && inY) {
+        if ((h.bombs || 0) > 0) {
+          h.bombs--;
+          lObj.destroyed = true;
+          lObj.disabled = true;
+          VFX.cracker(l[0], l[1], T);
+          fx("cloud", l[0], l[1]);
+          shake = 1.3;
+          GameAudio.play("lose", { vol: 1.2 });
+          toast("Laser Generator Destroyed! 💥");
+        } else {
+          hitHero(h, "Laser zap!");
+        }
+      }
     });
 
     // Star Coins
@@ -452,8 +546,8 @@ function update(dt) {
             }
             shadow = buildShadow();
           }
-          const laser = (L.lasers || []).find(l => l[3] === tid || l.id === tid);
-          if (laser) { laser.disabled = true; }
+          const laserObj = (G.lasers || []).find(l => l.data[3] === tid || l.data.id === tid);
+          if (laserObj) { laserObj.disabled = true; }
         }
       }
     }
@@ -522,8 +616,9 @@ function draw() {
   ctx.lineCap = "round";
 
   // Lasers
-  L.lasers.forEach((l, k) => {
-    if (l.disabled) return;
+  (G.lasers || []).forEach((lObj, k) => {
+    if (lObj.destroyed || lObj.disabled) return;
+    const l = lObj.data;
     const on = lOn(k), w = lWarn(k); if (!on && !(w && Math.floor(T / 60) % 2)) return;
     const hz = l[2] === "h", col = hz ? "#ff163c" : "#2f8cff", glow = hz ? "#ff4872" : "#6ec3ff";
     const span = 1.05;
@@ -541,11 +636,17 @@ function draw() {
   });
 
   // Saws
-  L.saws.forEach((s, k) => {
+  (G.saws || []).forEach((sObj, k) => {
+    if (sObj.destroyed) return;
+    const s = sObj.data;
     const [x, y] = sawAt(s, k), px = X(x), py = Y(y), D = sawS.width; ctx.fillStyle = "rgba(0,0,0,.3)"; ctx.beginPath(); ctx.ellipse(px + B * .1, py + B * .18, B * 1.15, B * 1.05, 0, 0, 7); ctx.fill();
     ctx.save(); ctx.translate(px, py); ctx.rotate(T / 650); ctx.drawImage(sawS, -D / 2, -D / 2); ctx.restore();
   });
-  L.wsaws.forEach((w, k) => { const [x, y] = wsPos(w), D = sawS.width; ctx.save(); ctx.translate(X(x), Y(y)); ctx.rotate(T / 650 * (k % 2 ? -1 : 1)); ctx.drawImage(sawS, -D / 2, -D / 2); ctx.restore(); });
+  (G.wsaws || []).forEach((wObj, k) => {
+    if (wObj.destroyed) return;
+    const w = wObj.data;
+    const [x, y] = wsPos(w), D = sawS.width; ctx.save(); ctx.translate(X(x), Y(y)); ctx.rotate(T / 650 * (k % 2 ? -1 : 1)); ctx.drawImage(sawS, -D / 2, -D / 2); ctx.restore();
+  });
   L.enemies.forEach((s, k) => { const [x, y] = sawAt(s, k + 9), S = B * 1.8; if (IM[s[4]]) ctx.drawImage(IM[s[4]], X(x) - S / 2, Y(y) - S / 2, S, S); });
 
   // Shields
@@ -554,6 +655,53 @@ function draw() {
     ctx.beginPath(); ctx.moveTo(0, -r * .95); ctx.bezierCurveTo(r * .55, -r * .85, r * .85, -r * .8, r * .85, -r * .5); ctx.bezierCurveTo(r * .85, r * .3, r * .45, r * .7, 0, r * .98); ctx.bezierCurveTo(-r * .45, r * .7, -r * .85, r * .3, -r * .85, -r * .5); ctx.bezierCurveTo(-r * .85, -r * .8, -r * .55, -r * .85, 0, -r * .95); ctx.closePath();
     const g = ctx.createLinearGradient(0, -r, 0, r); g.addColorStop(0, "#7fd0ff"); g.addColorStop(1, "#1b62d6"); ctx.fillStyle = g; ctx.fill(); ctx.shadowColor = "transparent"; ctx.strokeStyle = "#fff"; ctx.lineWidth = B * .07; ctx.stroke();
     ctx.fillStyle = "rgba(255,255,255,.55)"; ctx.beginPath(); ctx.moveTo(-r * .5, -r * .55); ctx.lineTo(-r * .1, -r * .55); ctx.lineTo(-r * .1, r * .35); ctx.lineTo(-r * .5, -r * .1); ctx.fill(); ctx.restore();
+  }
+
+  // Collectible Bombs (💣)
+  for (const b of (G.bombs || [])) if (!b.got) {
+    const px = X(b.x), py = Y(b.y) + Math.sin(T / 240) * B * .06, r = B * .36;
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0,.35)";
+    ctx.beginPath();
+    ctx.ellipse(px, Y(b.y) + B * .3, r * 1.05, r * .42, 0, 0, 7);
+    ctx.fill();
+
+    const bg = ctx.createRadialGradient(px - r * .32, py - r * .35, r * .08, px, py, r);
+    bg.addColorStop(0, "#64748b");
+    bg.addColorStop(0.35, "#334155");
+    bg.addColorStop(1, "#0f172a");
+    ctx.fillStyle = bg;
+    ctx.beginPath();
+    ctx.arc(px, py, r, 0, 7);
+    ctx.fill();
+    ctx.strokeStyle = "#1e293b";
+    ctx.lineWidth = B * .035;
+    ctx.stroke();
+
+    ctx.fillStyle = "#d97706";
+    ctx.strokeStyle = "#78350f";
+    ctx.lineWidth = B * .02;
+    ctx.fillRect(px - r * .22, py - r - r * .18, r * .44, r * .2);
+    ctx.strokeRect(px - r * .22, py - r - r * .18, r * .44, r * .2);
+
+    ctx.beginPath();
+    ctx.moveTo(px, py - r - r * .18);
+    ctx.quadraticCurveTo(px + r * .3, py - r - r * .5, px + r * .15, py - r - r * .72);
+    ctx.strokeStyle = "#fef08a";
+    ctx.lineWidth = B * .045;
+    ctx.stroke();
+
+    const sparkR = B * (.08 + .04 * Math.sin(T / 40));
+    const sparkG = ctx.createRadialGradient(px + r * .15, py - r - r * .72, 0, px + r * .15, py - r - r * .72, sparkR * 2.5);
+    sparkG.addColorStop(0, "#ffffff");
+    sparkG.addColorStop(0.3, "#fef08a");
+    sparkG.addColorStop(0.7, "#f97316");
+    sparkG.addColorStop(1, "rgba(239,68,68,0)");
+    ctx.fillStyle = sparkG;
+    ctx.beginPath();
+    ctx.arc(px + r * .15, py - r - r * .72, sparkR * 2.5, 0, 7);
+    ctx.fill();
+    ctx.restore();
   }
 
   // Star Coins
@@ -620,18 +768,59 @@ function draw() {
     }
   }
 
-  // Wall Switches
+  // Wall Switches (Wall-Mounted Flush Industrial Console)
   for (const sw of (G.switches || [])) {
     const px = X(sw.x), py = Y(sw.y), r = B * .42;
+    const side = sw.side || "left";
+    const act = sw.active, col = act ? "#00e676" : (sw.color || "#ff1744");
     ctx.save();
-    ctx.fillStyle = "#1e293b"; ctx.strokeStyle = "#94a3b8"; ctx.lineWidth = Math.max(1.5, B * .04);
-    rrect(ctx, px - r, py - r, r * 2, r * 2, r * .3); ctx.fill(); ctx.stroke();
-    const act = sw.active, col = act ? "#ff1744" : (sw.color || "#00e676");
-    ctx.shadowColor = col; ctx.shadowBlur = act ? B * .2 : B * .6; ctx.fillStyle = col;
-    ctx.beginPath(); ctx.arc(px, py, r * (act ? .55 : .68), 0, 7); ctx.fill();
+
+    let offX = 0, offY = 0, w = r * 1.5, h = r * 1.5;
+    if (side === "right") { offX = B * .22; w = r * 1.1; }
+    else if (side === "left") { offX = -B * .22; w = r * 1.1; }
+    else if (side === "top") { offY = -B * .22; h = r * 1.1; }
+    else if (side === "bottom") { offY = B * .22; h = r * 1.1; }
+
+    const sx = px + offX, sy = py + offY;
+
+    ctx.fillStyle = "rgba(0,0,0,0.4)";
+    rrect(ctx, sx - w / 2 + 2, sy - h / 2 + 3, w, h, r * .25);
+    ctx.fill();
+
+    ctx.fillStyle = "#1e293b";
+    ctx.strokeStyle = act ? "#10b981" : "#475569";
+    ctx.lineWidth = Math.max(2, B * .045);
+    rrect(ctx, sx - w / 2, sy - h / 2, w, h, r * .25);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.strokeStyle = "#64748b";
+    ctx.lineWidth = B * .07;
+    ctx.beginPath();
+    if (side === "right") { ctx.moveTo(sx + w / 2, sy); ctx.lineTo(sx + w / 2 + B * .25, sy); }
+    else if (side === "left") { ctx.moveTo(sx - w / 2, sy); ctx.lineTo(sx - w / 2 - B * .25, sy); }
+    else if (side === "top") { ctx.moveTo(sx, sy - h / 2); ctx.lineTo(sx, sy - h / 2 - B * .25); }
+    else if (side === "bottom") { ctx.moveTo(sx, sy + h / 2); ctx.lineTo(sx, sy + h / 2 + B * .25); }
+    ctx.stroke();
+
+    ctx.shadowColor = col;
+    ctx.shadowBlur = act ? B * .4 : B * .65;
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.arc(sx, sy, r * (act ? .5 : .62), 0, 7);
+    ctx.fill();
+
     if (!act) {
-      ctx.strokeStyle = "rgba(0, 230, 118, " + (.4 + .35 * Math.sin(T / 180)) + ")"; ctx.lineWidth = B * .08;
-      ctx.beginPath(); ctx.arc(px, py, r * (.85 + .12 * Math.sin(T / 180)), 0, 7); ctx.stroke();
+      ctx.strokeStyle = "rgba(255, 23, 68, " + (.4 + .4 * Math.sin(T / 150)) + ")";
+      ctx.lineWidth = B * .065;
+      ctx.beginPath();
+      ctx.arc(sx, sy, r * (.78 + .1 * Math.sin(T / 150)), 0, 7);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.arc(sx, sy, r * .22, 0, 7);
+      ctx.fill();
     }
     ctx.restore();
   }
@@ -677,6 +866,16 @@ function draw() {
     if (sh) {
       const sf = (h.p.shield - T) / 8000; ctx.fillStyle = "rgba(10,21,54,.8)"; rrect(ctx, bx, by - bh * .75, bw, bh * .5, bh * .25); ctx.fill();
       ctx.fillStyle = "#58b8ff"; rrect(ctx, bx, by - bh * .75, bw * sf, bh * .5, bh * .25); ctx.fill();
+    }
+    if ((h.p.bombs || 0) > 0) {
+      ctx.save();
+      const badgeX = bx + bw + B * .1, badgeY = by + bh / 2;
+      ctx.fillStyle = "#0f172a"; ctx.strokeStyle = "#f59e0b"; ctx.lineWidth = Math.max(1.5, B * .03);
+      rrect(ctx, badgeX, badgeY - bh * .7, B * .95, bh * 1.4, bh * .4); ctx.fill(); ctx.stroke();
+      ctx.font = "900 " + Math.round(bh * .95) + "px sans-serif";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = "#fbbf24";
+      ctx.fillText(`💣${h.p.bombs}`, badgeX + B * .47, badgeY + 1);
+      ctx.restore();
     }
   }
 

@@ -111,7 +111,40 @@ Hero 1 (Spider-Man) and Hero 2 (Ghost Spider) **must never have identical or sym
 
 ---
 
-## 🎆 7. Grand Victory Celebration with Firecrackers
+## 💣 6. Collectible Bombs & Emergency Rescue System
+
+1. **Strategic Bomb Spawns (`bombs`)**:
+   - Collectible bombs spawn in dedicated corner alcoves/dead-ends away from direct paths.
+   - When a hero walks over a bomb:
+     - Hero gains `+1 Bomb` (`h.bombs++`).
+     - Floating HUD badge appears above the hero's health bar: `💣 x1`.
+     - Sparkle effects and pickup chime play.
+2. **Tactical Hazard Demolition**:
+   - Carrying a bomb allows a hero to destroy lethal traps on contact without taking damage:
+     - **Spinning Saw Wheels**: Bomb detonates on contact, permanently vaporizing the saw wheel (`sObj.destroyed = true`), screen shake (`shake = 1.3`), explosion sound, and confetti bursts!
+     - **Moving Wall Saws**: Permanently destroyed (`wObj.destroyed = true`).
+     - **Laser Barriers**: Destroys emitter generator (`lObj.destroyed = true; lObj.disabled = true;`).
+3. **Emergency Rescue Role (Partner Softlock Relief)**:
+   - If Character 1 dies before unlocking Character 2's blocker wall:
+     - The game **does not immediately trigger defeat** if a bomb is held or collectible on the map.
+     - Character 2 can retreat, retrieve the collectible bomb from an alcove, bring it directly to their locked blocker wall, and blast it open (`gate.open = true`)!
+     - This breaks the deadlock and allows the living hero to escape!
+
+---
+
+## 🔘 7. Wall-Mounted Switches (`side: "left" | "right" | "top" | "bottom"`)
+
+1. **Wall-Mounted Flush Alignment**:
+   - Switches are not random floor tiles; they are industrial consoles bolted flush against the corridor wall.
+   - Mounted according to their specified wall side (`sw.side`), complete with metallic conduit cables anchored directly into the wall face.
+2. **Off-Path Tactical Placement**:
+   - Switches are located in dedicated side pockets/alcoves.
+   - If Character 2 rushes straight forward along their corridor without helping Character 1, they will hit their own closed blocker wall.
+   - Character 2 must consciously turn around, enter the switch alcove, and flip the wall lever for Character 1. Character 1 can then advance and flip the corresponding switch for Character 2!
+
+---
+
+## 🎆 8. Grand Victory Celebration with Firecrackers
 
 1. **Dual Living Heroes Exit Rule**:
    - All surviving heroes must reach the green extraction zone.
@@ -126,13 +159,24 @@ Hero 1 (Spider-Man) and Hero 2 (Ghost Spider) **must never have identical or sym
 
 ---
 
-## 🎵 8. YouTube Shorts Safe Audio Workflow
+## 🎵 9. YouTube Copyright Claim Fix & Safe Upload Workflow
 
-1. **SFX-Only Recording**:
-   - Game engine outputs boosted, compressor-limited sound effects (hits, laser hums, shield pickups, star dings, victory firecrackers).
-   - Zero copyrighted background music is embedded in the game.
-2. **Viral Music via YouTube Mobile App ("Add sound")**:
-   - Record gameplay video with game SFX.
-   - Upload via YouTube mobile app > tap **"Add sound"** > search for **"NO BATIDÃO - ZXKAI"** (or any trending audio).
-   - Balance volume: Game SFX at 85%, Music at 55%.
-   - **Immune to Content ID global blocks!**
+### A. How to Instantly Fix Your Currently Blocked Video in YouTube Studio:
+In the YouTube Studio screenshot uploaded:
+1. Click the **"Take action"** button next to the claim.
+2. Choose one of two safe options:
+   - **Option 1: "Replace song"**: Select a free, licensed music track from the YouTube Audio Library. YouTube will replace "NO BATIDÃO" and immediately lift the global block!
+   - **Option 2: "Mute song"**: Mutes the music audio while keeping your gameplay sound effects audible.
+   - **Option 3: Delete & Re-upload via Mobile App** (Recommended if you want "NO BATIDÃO" on the Short).
+
+### B. Why Was "NO BATIDÃO" Blocked?
+- If you add copyrighted music (like "NO BATIDÃO") inside third-party editing software (CapCut, Premiere, InShot) and render it into the MP4, YouTube detects the raw audio file during upload and blocks the video.
+- **The Zero-Copyright Method for YouTube Shorts**:
+  1. Export your gameplay video from your editor with **ONLY the game sound effects (no music track in the file)**.
+  2. Open the **YouTube mobile app** > tap the **"+"** button > create Short > select your video.
+  3. Tap **"Add sound"** at the top of the YouTube app.
+  4. Search for **"NO BATIDÃO"** and select it from YouTube's official music library!
+  5. Tap the volume sliders:
+     - **Original audio (Game SFX)**: 90% – 100%
+     - **Added sound (Music)**: 40% – 50%
+  6. When added through YouTube's official "Add sound" button, YouTube automatically handles the music licensing and your video **WILL NEVER GET CLAIMED OR BLOCKED!**
