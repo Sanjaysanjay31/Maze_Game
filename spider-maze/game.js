@@ -386,67 +386,86 @@ function hitHero(h, msg) {
 
 function throwHeroBomb(h) {
   const [px, py] = pos(h);
-  const lk = h.look || [0, 1];
-  let targetX = px + lk[0] * 2.2;
-  let targetY = py + lk[1] * 2.2;
+  let lk = h.look || [0, 1];
+  if (lk[0] === 0 && lk[1] === 0) lk = [0, 1];
+  const mag = Math.hypot(lk[0], lk[1]) || 1;
+  const nx = lk[0] / mag, ny = lk[1] / mag;
+
+  // Default target: throw forward ~2 steps (up to 6.0 blocks) down the corridor
+  let maxForward = 6.0;
+  for (let s = 1; s <= 6; s++) {
+    const cx = Math.round(px + nx * s);
+    const cy = Math.round(py + ny * s);
+    if (solid(cx, cy)) {
+      maxForward = Math.max(1.8, s - 0.4);
+      break;
+    }
+  }
+  let targetX = px + nx * maxForward;
+  let targetY = py + ny * maxForward;
   let targetType = "ground", targetObj = null;
 
-  // Gather all potential hazard & gate targets within reach (up to 4.5 blocks)
+  // Gather potential targets along hero's line of fire (reach up to 8.5 blocks / ~3 steps)
   const candidates = [];
 
-  // Saws
+  // 1. Saws
   (G.saws || []).forEach((sObj, k) => {
     if (sObj.destroyed) return;
     const [sx, sy] = sawAt(sObj.data, k);
-    const d = Math.hypot(sx - px, sy - py);
-    if (d <= 4.5) {
-      const dot = (sx - px) * lk[0] + (sy - py) * lk[1];
-      candidates.push({ type: "saw", obj: sObj, x: sx, y: sy, dist: d, dot });
+    const s = sObj.data;
+    const fwd = (sx - px) * nx + (sy - py) * ny;
+    const side = Math.abs((sx - px) * -ny + (sy - py) * nx);
+    const dist = Math.hypot(sx - px, sy - py);
+    // Also check patrol endpoints
+    const fwdStart = (s[0] - px) * nx + (s[1] - py) * ny;
+    const fwdEnd = (s[2] - px) * nx + (s[3] - py) * ny;
+    if ((fwd >= 0.5 && fwd <= 8.5 && side <= 2.2) || dist <= 2.5 || (fwdStart >= 0.5 && fwdStart <= 8.5) || (fwdEnd >= 0.5 && fwdEnd <= 8.5)) {
+      candidates.push({ type: "saw", obj: sObj, x: sx, y: sy, dist, fwd: Math.max(0.5, fwd) });
     }
   });
 
-  // Wall Saws
+  // 2. Wall Saws
   (G.wsaws || []).forEach(wObj => {
     if (wObj.destroyed) return;
     const [wx, wy] = wsPos(wObj.data);
-    const d = Math.hypot(wx - px, wy - py);
-    if (d <= 4.5) {
-      const dot = (wx - px) * lk[0] + (wy - py) * lk[1];
-      candidates.push({ type: "wsaw", obj: wObj, x: wx, y: wy, dist: d, dot });
+    const fwd = (wx - px) * nx + (wy - py) * ny;
+    const side = Math.abs((wx - px) * -ny + (wy - py) * nx);
+    const dist = Math.hypot(wx - px, wy - py);
+    if ((fwd >= 0.5 && fwd <= 8.5 && side <= 2.2) || dist <= 2.5) {
+      candidates.push({ type: "wsaw", obj: wObj, x: wx, y: wy, dist, fwd: Math.max(0.5, fwd) });
     }
   });
 
-  // Lasers
+  // 3. Lasers
   (G.lasers || []).forEach(lObj => {
     if (lObj.destroyed || lObj.disabled) return;
     const [lx, ly] = lObj.data;
-    const d = Math.hypot(lx - px, ly - py);
-    if (d <= 4.5) {
-      const dot = (lx - px) * lk[0] + (ly - py) * lk[1];
-      candidates.push({ type: "laser", obj: lObj, x: lx, y: ly, dist: d, dot });
+    const fwd = (lx - px) * nx + (ly - py) * ny;
+    const side = Math.abs((lx - px) * -ny + (ly - py) * nx);
+    const dist = Math.hypot(lx - px, ly - py);
+    if ((fwd >= 0.5 && fwd <= 8.5 && side <= 2.2) || dist <= 2.5) {
+      candidates.push({ type: "laser", obj: lObj, x: lx, y: ly, dist, fwd: Math.max(0.5, fwd) });
     }
   });
 
-  // Locked Gates
+  // 4. Locked Gates
   (G.gates || []).forEach(gate => {
     if (gate.open) return;
     for (const [gx, gy] of gate.blocks) {
       const cx = gx + 0.5, cy = gy + 0.5;
-      const d = Math.hypot(cx - px, cy - py);
-      if (d <= 4.5) {
-        const dot = (cx - px) * lk[0] + (cy - py) * lk[1];
-        candidates.push({ type: "gate", obj: gate, x: cx, y: cy, dist: d, dot });
+      const fwd = (cx - px) * nx + (cy - py) * ny;
+      const side = Math.abs((cx - px) * -ny + (cy - py) * nx);
+      const dist = Math.hypot(cx - px, cy - py);
+      if ((fwd >= 0.5 && fwd <= 8.5 && side <= 2.2) || dist <= 2.5) {
+        candidates.push({ type: "gate", obj: gate, x: cx, y: cy, dist, fwd: Math.max(0.5, fwd) });
       }
     }
   });
 
-  // Pick candidate: prefer ones in front of the hero (dot > 0.1), sorted by distance
-  const inFront = candidates.filter(c => c.dot > 0.1);
-  const list = inFront.length ? inFront : candidates;
-  list.sort((a, b) => a.dist - b.dist);
-
-  if (list.length > 0) {
-    const best = list[0];
+  // Pick closest obstacle in the line of fire
+  if (candidates.length > 0) {
+    candidates.sort((a, b) => a.fwd - b.fwd || a.dist - b.dist);
+    const best = candidates[0];
     targetX = best.x;
     targetY = best.y;
     targetType = best.type;
@@ -456,11 +475,14 @@ function throwHeroBomb(h) {
   h.bombs = Math.max(0, (h.bombs || 0) - 1);
   h.holdingBomb = false;
 
+  const throwDist = Math.hypot(targetX - px, targetY - py);
+  const flightDur = Math.max(260, Math.min(420, Math.round(throwDist * 50)));
+
   G.projectiles = G.projectiles || [];
   G.projectiles.push({
     sx: px, sy: py,
     tx: targetX, ty: targetY,
-    t0: T, dur: 320,
+    t0: T, dur: flightDur,
     targetType, targetObj
   });
 
@@ -591,15 +613,19 @@ function update(dt) {
         GameAudio.play("lose", { vol: 1.4 });
         GameAudio.play("hit", { vol: 1.4 });
 
-        // FULL AREA OF EFFECT (AOE) OBLITERATION (R <= 3.5 blocks)
-        const blastRadius = 3.5;
+        // FULL AREA OF EFFECT (AOE) OBLITERATION (R <= 4.2 blocks)
+        const blastRadius = 4.2;
         let destroyedCount = 0;
 
         // 1. Saws
         (G.saws || []).forEach((sObj, k) => {
           if (sObj.destroyed) return;
           const [sx, sy] = sawAt(sObj.data, k);
-          if (Math.hypot(sx - x, sy - y) <= blastRadius) {
+          const s = sObj.data;
+          const dCurr = Math.hypot(sx - x, sy - y);
+          const dStart = Math.hypot(s[0] - x, s[1] - y);
+          const dEnd = Math.hypot(s[2] - x, s[3] - y);
+          if (dCurr <= blastRadius || dStart <= blastRadius || dEnd <= blastRadius) {
             sObj.destroyed = true;
             destroyedCount++;
             fx("spark", sx, sy);

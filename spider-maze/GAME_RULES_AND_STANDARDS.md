@@ -185,16 +185,18 @@ Hero 1 (Spider-Man) and Hero 2 (Ghost Spider) **must never have identical or sym
 
 ## 💣 10. Bomb Throw & Full Area-of-Effect (AOE) Hazard Obliteration
 
-1. **Aiming & Throwing with Key `8`**:
-   - Checks within a $4.5\text{-block}$ reach along the hero's look direction for saws, wall blades, lasers, and locked gates.
-2. **Full Area-of-Effect (AOE) Detonation ($R \le 3.5\text{ blocks}$)**:
+1. **Long-Range Line-of-Sight Aiming with Key `8` (2–3 Steps Reach)**:
+   - When facing any saw wheel, wall blade, laser, or locked gate, pressing **`8`** targets it directly along the hero's corridor line of sight up to **$8.5\text{ blocks}$ ($2\text{ to }3\text{ full corridor steps}$)** away!
+   - Even from 2 steps back, the bomb flies in an arched parabolic trajectory directly to the target obstacle.
+   - If no target is present, the bomb travels 2 steps forward ($6.0\text{ blocks}$) down the hallway until it hits a solid wall.
+2. **Full Area-of-Effect (AOE) Detonation ($R \le 4.2\text{ blocks}$)**:
    - Upon impact, detonates with intense fiery blast rings, smoke puffs, and screen shake.
-   - Obliterates ALL hazards within the $3.5\text{-block}$ blast radius:
-     - Circular saws and wall blades marked `destroyed = true` and vanished immediately from canvas and collisions.
+   - Obliterates ALL hazards within the $4.2\text{-block}$ blast radius:
+     - Circular saws and wall blades marked `destroyed = true` and vanished immediately from canvas, collisions, and minimap.
      - Laser generators blown up and disabled.
      - Locked blocker gates blown open with wall tiles demolished and shadows rebuilt.
 3. **Emergency Rescue Role**:
-   - If Character 1 dies before unlocking a gate, Character 2 can pick up a bomb with `7`, approach the gate, and throw with `8` to blast through to the exit!
+   - If Character 1 dies before unlocking a gate, Character 2 can pick up a bomb with `7`, approach from 2 steps away, and throw with `8` to blast through to the exit!
 
 ---
 
