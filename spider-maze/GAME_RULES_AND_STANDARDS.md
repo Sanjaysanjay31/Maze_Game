@@ -111,51 +111,55 @@ Hero 1 (Spider-Man) and Hero 2 (Ghost Spider) **must never have identical or sym
 
 ---
 
-## 💣 6. Collectible Bombs & Emergency Rescue System
+## 💣 6. Interactive 3D Bomb System (Key 7 to Pick, Key 8 to Throw)
 
-1. **Strategic Bomb Spawns (`bombs`)**:
-   - Collectible bombs spawn in dedicated corner alcoves/dead-ends away from direct paths.
-   - When a hero walks over a bomb:
-     - Hero gains `+1 Bomb` (`h.bombs++`).
-     - Floating HUD badge appears above the hero's health bar: `💣 x1`.
-     - Sparkle effects and pickup chime play.
-2. **Tactical Hazard Demolition**:
-   - Carrying a bomb allows a hero to destroy lethal traps on contact without taking damage:
-     - **Spinning Saw Wheels**: Bomb detonates on contact, permanently vaporizing the saw wheel (`sObj.destroyed = true`), screen shake (`shake = 1.3`), explosion sound, and confetti bursts!
-     - **Moving Wall Saws**: Permanently destroyed (`wObj.destroyed = true`).
-     - **Laser Barriers**: Destroys emitter generator (`lObj.destroyed = true; lObj.disabled = true;`).
+1. **Pick Up / Carry with Key `7`**:
+   - Bombs sit on the floor in strategic alcoves with an animated flickering fuse spark.
+   - When the active hero is within range ($\le 1.8$ cells), pressing **`7`** triggers the **3D Carrying Animation**:
+     - The hero visibly carries the 3D spherical bomb out in front with both gloved hands (Spider-Man red web gloves / Ghost Spider white & cyan gloves).
+     - The carried bomb realistically bobs with hero footsteps (`sin(T / 80)`).
+     - Burning fuse spark flickers and casts hot glowing particles.
+2. **Aim & Throw with Key `8` (Fiery Hazard Obliteration)**:
+   - When standing in front of or adjacent to a locked blocker gate, saw wheel, wall blade, or laser, pressing **`8`** throws the bomb forward:
+     - The bomb travels along a smooth 3D parabolic arc over $320\text{ms}$, casting an animated shadow below.
+     - **On Impact**: Detonates with an intense, blazing **Fire Blast (`VFX.fireblast`)**:
+       - Screen flashes in hot fiery orange (`255, 100, 20`).
+       - Concentric fiery shockwave blast rings expanding rapidly.
+       - Billowing smoke clouds and burning spark embers.
+       - Deep explosion crunch sound.
+       - **Strict Rule**: **NO CELEBRATION / CONFETTI ON TRAP BLAST!** The explosion is purely tactical combat.
+       - Instantly obliterates the target obstacle (unlocks gate, vaporizes saw wheel, wall blade, or laser generator).
 3. **Emergency Rescue Role (Partner Softlock Relief)**:
    - If Character 1 dies before unlocking Character 2's blocker wall:
-     - The game **does not immediately trigger defeat** if a bomb is held or collectible on the map.
-     - Character 2 can retreat, retrieve the collectible bomb from an alcove, bring it directly to their locked blocker wall, and blast it open (`gate.open = true`)!
-     - This breaks the deadlock and allows the living hero to escape!
+     - The game **does not trigger defeat** if a bomb is held or collectible on the map.
+     - Character 2 can retreat, pick up a bomb with **`7`**, bring it to the locked gate, and blast it open with **`8`** to escape alone!
 
 ---
 
-## 🔘 7. Wall-Mounted Switches (`side: "left" | "right" | "top" | "bottom"`)
+## 🔘 7. 3D Wall-Mounted Switches (Cartoon Trapezoid Design)
 
-1. **Wall-Mounted Flush Alignment**:
-   - Switches are not random floor tiles; they are industrial consoles bolted flush against the corridor wall.
-   - Mounted according to their specified wall side (`sw.side`), complete with metallic conduit cables anchored directly into the wall face.
-2. **Off-Path Tactical Placement**:
-   - Switches are located in dedicated side pockets/alcoves.
-   - If Character 2 rushes straight forward along their corridor without helping Character 1, they will hit their own closed blocker wall.
-   - Character 2 must consciously turn around, enter the switch alcove, and flip the wall lever for Character 1. Character 1 can then advance and flip the corresponding switch for Character 2!
+1. **Exact Reference Matching (Tom & Jerry Reference)**:
+   - Switches are mounted flush on the corridor wall boundary according to `sw.side` (`right`, `left`, `top`, `bottom`).
+   - Features a matte steel mounting plate with corner bolts anchored to the wall.
+   - Protruding into the corridor is a bold **3D cartoon lime-green trapezoidal button** with beveled perspective shading and thick black cartoon border.
+2. **Mechanical State Feedback**:
+   - **Unpressed (`active = false`)**: Trapezoid button protrudes $0.45\text{B}$ out into the corridor.
+   - **Pressed (`active = true`)**: Depresses flush into the wall housing ($0.1\text{B}$ depth), lights up with an illuminated cyan/green indicator and mechanical click audio, unlocking the linked route gates!
 
 ---
 
-## 🎆 8. Grand Victory Celebration with Firecrackers
+## 🎆 8. Grand 3D Victory Celebration Plaque
 
 1. **Dual Living Heroes Exit Rule**:
    - All surviving heroes must reach the green extraction zone.
-   - As each hero arrives, their top avatar card receives an animated glowing **Green Tick (`✔`)**.
-2. **On-Canvas Firecracker Spectacular**:
-   - Continuous multi-colored firecracker bursts (`VFX.cracker`) across the screen:
-     - Popping sparks in red, gold, green, cyan, and violet.
-     - Expanding sparkle rings, smoke bursts, and confetti.
-   - Glowing on-canvas victory banners:
-     - `"ALL HEROES ESCAPED!"`
-     - `"★★★ VICTORY! ★★★"`
+2. **On-Canvas 3D Celebration Plaque**:
+   - Deep royal midnight-blue curved banner with 3D beveled metallic gold frame.
+   - **Channel Branding**: `"GLOBAL GAMES"` in icy diamond-white and `"SK"` in radiant scarlet red (`#ff1744`).
+   - **Headline**: `"ALL HEROES ESCAPED!"` in 3D golden extruded typography with drop shadows.
+   - **Subheader**: `"★★★ GRAND VICTORY ★★★"` in glowing emerald green (`#22c55e`).
+   - **Dual Hero Status Cards**: Displays Spider-Man & Ghost Spider avatar circles side by side with bouncing **3D Green Ticks (`✔`)** and labels.
+   - **Festive FX**: Continuous 360-degree multicolored firecracker rockets (`VFX.cracker`) and spiraling golden confetti ribbons (`VFX.confetti`) across the entire screen!
+   - 100% clean for screen recording with zero modal dialogs.
 
 ---
 
