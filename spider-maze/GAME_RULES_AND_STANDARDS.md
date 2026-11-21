@@ -148,22 +148,58 @@ Hero 1 (Spider-Man) and Hero 2 (Ghost Spider) **must never have identical or sym
 
 ---
 
-## 🎆 8. Grand 3D Victory Celebration Plaque
+## 🎆 8. Grand 3D Victory Celebration Plaque & Solo Survivor Status
 
-1. **Dual Living Heroes Exit Rule**:
-   - All surviving heroes must reach the green extraction zone.
+1. **Dynamic Exit Condition**:
+   - All surviving (living) heroes must reach the green extraction zone.
+   - If one hero is eliminated (`G.dead.has(hero.id)`), the surviving hero can still reach the exit alone to win.
 2. **On-Canvas 3D Celebration Plaque**:
-   - Deep royal midnight-blue curved banner with 3D beveled metallic gold frame.
-   - **Channel Branding**: `"GLOBAL GAMES"` in icy diamond-white and `"SK"` in radiant scarlet red (`#ff1744`).
-   - **Headline**: `"ALL HEROES ESCAPED!"` in 3D golden extruded typography with drop shadows.
-   - **Subheader**: `"★★★ GRAND VICTORY ★★★"` in glowing emerald green (`#22c55e`).
-   - **Dual Hero Status Cards**: Displays Spider-Man & Ghost Spider avatar circles side by side with bouncing **3D Green Ticks (`✔`)** and labels.
-   - **Festive FX**: Continuous 360-degree multicolored firecracker rockets (`VFX.cracker`) and spiraling golden confetti ribbons (`VFX.confetti`) across the entire screen!
-   - 100% clean for screen recording with zero modal dialogs.
+   - Deep royal midnight-blue curved banner with 3D beveled metallic gold frame and inner glow trim.
+   - **Channel Branding**: `"GLOBAL GAMES"` in diamond white and `"SK"` in radiant scarlet red (`#ff1744`).
+   - **Dynamic Headline & Subheader**:
+     - **Both Heroes Survived**: `"ALL HEROES ESCAPED!"` with `"★★★ GRAND VICTORY ★★★"` in glowing emerald green (`#22c55e`).
+     - **Solo Survivor (Spider-Man)**: `"SPIDER-MAN ESCAPED!"` with `"★★★ SOLO SURVIVOR ★★★"` in glowing cyan (`#38bdf8`).
+     - **Solo Survivor (Ghost Spider)**: `"GHOST SPIDER ESCAPED!"` with `"★★★ SOLO SURVIVOR ★★★"` in glowing pink (`#f472b6`).
+   - **Enlarged Character Status Badges**:
+     - **Noticeably Increased Avatar Scale**: Portraits rendered ~50% larger (`cr = B * 0.78`), crisp and high-contrast.
+     - **Clear Unobscured Faces**: No badges or ticks are placed over the characters' faces.
+     - **Badges Placed Underneath Avatar**:
+       - **Escaped Hero**: Glowing emerald green ring, full vibrant colors, hero name, and a stylish **`✔ ESCAPED`** green pill badge underneath.
+       - **Eliminated Hero**: Crimson red ring, grayscale + dimmed silhouette with red tint, hero name, and a **`❌ ELIMINATED`** red pill badge underneath.
+   - **Festive FX**: Continuous 360-degree multicolored firecracker rockets (`VFX.cracker`) and golden confetti ribbons (`VFX.confetti`) across the screen. Zero modal popups to keep YouTube recordings 100% clean.
 
 ---
 
-## 🎵 9. YouTube Copyright Claim Fix & Safe Upload Workflow
+## 🎯 9. Precise Movement Controls (25% Tap vs Continuous Hold)
+
+1. **Single Click / Tap Directional Quantum ($25\%$)**:
+   - When tapping or clicking any directional control (arrow buttons, keys, or canvas pointer swipe), the character advances by **at most 25% ($0.25$ of a corridor tile)**.
+   - Prevents overshooting corridors or sliding unintentionally into hazards.
+2. **Continuous Hold ($> 200\text{ms}$)**:
+   - When holding a direction button continuously for longer than $200\text{ms}$, the character transitions seamlessly into full-speed continuous running.
+3. **Instant Stop**:
+   - The exact moment input is released (`pointerup`, `keyup`), movement halts immediately with **zero drift, sliding, or residual inertia**.
+4. **Calibrated Movement Speed**:
+   - Base movement speed set to $6.2$ (yielding balanced, responsive navigation).
+
+---
+
+## 💣 10. Bomb Throw & Full Area-of-Effect (AOE) Hazard Obliteration
+
+1. **Aiming & Throwing with Key `8`**:
+   - Checks within a $4.5\text{-block}$ reach along the hero's look direction for saws, wall blades, lasers, and locked gates.
+2. **Full Area-of-Effect (AOE) Detonation ($R \le 3.5\text{ blocks}$)**:
+   - Upon impact, detonates with intense fiery blast rings, smoke puffs, and screen shake.
+   - Obliterates ALL hazards within the $3.5\text{-block}$ blast radius:
+     - Circular saws and wall blades marked `destroyed = true` and vanished immediately from canvas and collisions.
+     - Laser generators blown up and disabled.
+     - Locked blocker gates blown open with wall tiles demolished and shadows rebuilt.
+3. **Emergency Rescue Role**:
+   - If Character 1 dies before unlocking a gate, Character 2 can pick up a bomb with `7`, approach the gate, and throw with `8` to blast through to the exit!
+
+---
+
+## 🎵 11. YouTube Copyright Claim Fix & Safe Upload Workflow
 
 ### A. How to Instantly Fix Your Currently Blocked Video in YouTube Studio:
 In the YouTube Studio screenshot uploaded:

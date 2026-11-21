@@ -1,5 +1,5 @@
 "use strict";
-const LV = window.LEVELS, A = window.ASSETS, M = 3, SS = 14, SPEED = 8.5, MAXHP = 5;
+const LV = window.LEVELS, A = window.ASSETS, M = 3, SS = 14, SPEED = 6.2, MAXHP = 5;
 let li = 0, L, W, H, CW, CH, WALL;
 const solid = (x, y) => x < 0 || y < 0 || x >= W || y >= H || WALL[y][x] === 1;
 const nbrs = (i, j) => {
@@ -294,10 +294,14 @@ function toast(m) {
 function ui() {
   $("sc").textContent = Math.min(G.score, L.coins.length);
   document.querySelectorAll(".ct").forEach(e => {
-    e.classList.toggle("dead", G.dead.has(e.dataset.n));
+    const isDead = G.dead.has(e.dataset.n);
+    const heroObj = e.dataset.n === "spiderman" ? G.p1 : G.p2;
+    const isEscaped = !!(heroObj && heroObj.escaped && !isDead);
+    e.classList.toggle("dead", isDead);
+    e.classList.toggle("escaped", isEscaped);
     const isHero1 = e.dataset.n === "spiderman" && G.active === 1;
     const isHero2 = e.dataset.n === "gwen" && G.active === 2;
-    e.classList.toggle("active-hero", isHero1 || isHero2);
+    e.classList.toggle("active-hero", (isHero1 || isHero2) && !isDead && !isEscaped);
   });
 }
 
@@ -383,66 +387,70 @@ function hitHero(h, msg) {
 function throwHeroBomb(h) {
   const [px, py] = pos(h);
   const lk = h.look || [0, 1];
-  let targetX = px + lk[0] * 1.8;
-  let targetY = py + lk[1] * 1.8;
+  let targetX = px + lk[0] * 2.2;
+  let targetY = py + lk[1] * 2.2;
   let targetType = "ground", targetObj = null;
 
-  // 1. Check nearby locked gate
-  for (const gate of (G.gates || [])) {
-    if (!gate.open) {
-      for (const [gx, gy] of gate.blocks) {
-        if (Math.hypot(gx - px, gy - py) < 2.8) {
-          targetX = gx + 0.5; targetY = gy + 0.5;
-          targetType = "gate"; targetObj = gate;
-          break;
-        }
-      }
-      if (targetObj) break;
-    }
-  }
+  // Gather all potential hazard & gate targets within reach (up to 4.5 blocks)
+  const candidates = [];
 
-  // 2. Check nearby saw
-  if (!targetObj) {
-    for (let k = 0; k < (G.saws || []).length; k++) {
-      const sObj = G.saws[k];
-      if (!sObj.destroyed) {
-        const [sx, sy] = sawAt(sObj.data, k);
-        if (Math.hypot(sx - px, sy - py) < 2.8) {
-          targetX = sx; targetY = sy;
-          targetType = "saw"; targetObj = sObj;
-          break;
-        }
-      }
+  // Saws
+  (G.saws || []).forEach((sObj, k) => {
+    if (sObj.destroyed) return;
+    const [sx, sy] = sawAt(sObj.data, k);
+    const d = Math.hypot(sx - px, sy - py);
+    if (d <= 4.5) {
+      const dot = (sx - px) * lk[0] + (sy - py) * lk[1];
+      candidates.push({ type: "saw", obj: sObj, x: sx, y: sy, dist: d, dot });
     }
-  }
+  });
 
-  // 3. Check nearby wall saw
-  if (!targetObj) {
-    for (const wObj of (G.wsaws || [])) {
-      if (!wObj.destroyed) {
-        const [wx, wy] = wsPos(wObj.data);
-        if (Math.hypot(wx - px, wy - py) < 2.8) {
-          targetX = wx; targetY = wy;
-          targetType = "wsaw"; targetObj = wObj;
-          break;
-        }
-      }
+  // Wall Saws
+  (G.wsaws || []).forEach(wObj => {
+    if (wObj.destroyed) return;
+    const [wx, wy] = wsPos(wObj.data);
+    const d = Math.hypot(wx - px, wy - py);
+    if (d <= 4.5) {
+      const dot = (wx - px) * lk[0] + (wy - py) * lk[1];
+      candidates.push({ type: "wsaw", obj: wObj, x: wx, y: wy, dist: d, dot });
     }
-  }
+  });
 
-  // 4. Check nearby laser
-  if (!targetObj) {
-    for (let k = 0; k < (G.lasers || []).length; k++) {
-      const lObj = G.lasers[k];
-      if (!lObj.destroyed && !lObj.disabled) {
-        const l = lObj.data;
-        if (Math.hypot(l[0] - px, l[1] - py) < 2.8) {
-          targetX = l[0]; targetY = l[1];
-          targetType = "laser"; targetObj = lObj;
-          break;
-        }
+  // Lasers
+  (G.lasers || []).forEach(lObj => {
+    if (lObj.destroyed || lObj.disabled) return;
+    const [lx, ly] = lObj.data;
+    const d = Math.hypot(lx - px, ly - py);
+    if (d <= 4.5) {
+      const dot = (lx - px) * lk[0] + (ly - py) * lk[1];
+      candidates.push({ type: "laser", obj: lObj, x: lx, y: ly, dist: d, dot });
+    }
+  });
+
+  // Locked Gates
+  (G.gates || []).forEach(gate => {
+    if (gate.open) return;
+    for (const [gx, gy] of gate.blocks) {
+      const cx = gx + 0.5, cy = gy + 0.5;
+      const d = Math.hypot(cx - px, cy - py);
+      if (d <= 4.5) {
+        const dot = (cx - px) * lk[0] + (cy - py) * lk[1];
+        candidates.push({ type: "gate", obj: gate, x: cx, y: cy, dist: d, dot });
       }
     }
+  });
+
+  // Pick candidate: prefer ones in front of the hero (dot > 0.1), sorted by distance
+  const inFront = candidates.filter(c => c.dot > 0.1);
+  const list = inFront.length ? inFront : candidates;
+  list.sort((a, b) => a.dist - b.dist);
+
+  if (list.length > 0) {
+    const best = list[0];
+    targetX = best.x;
+    targetY = best.y;
+    targetType = best.type;
+    targetObj = best.obj;
   }
 
   h.bombs = Math.max(0, (h.bombs || 0) - 1);
@@ -460,14 +468,45 @@ function throwHeroBomb(h) {
   toast(`${h.name} threw a Bomb! 💣💥`);
 }
 
+const ctl = {
+  key: [], ptr: null, pad: null,
+  currDir: null,
+  pressT: 0,
+  stepMoved: 0,
+  isHeld: false
+};
+
 function held() { return ctl.pad || ctl.ptr || ctl.key[ctl.key.length - 1] || null; }
 
 function update(dt) {
   if (state !== "play") return;
   T += dt; G.t += dt;
-  const p = G.p, v = DIR[held()];
+  const p = G.p;
+  const curInput = held();
+  const v = DIR[curInput];
+
+  if (!curInput) {
+    ctl.currDir = null;
+    ctl.stepMoved = 0;
+    ctl.isHeld = false;
+  } else {
+    if (ctl.currDir !== curInput) {
+      ctl.currDir = curInput;
+      ctl.pressT = T;
+      ctl.stepMoved = 0;
+      ctl.isHeld = false;
+    } else if (!ctl.isHeld && (T - ctl.pressT) >= 200) {
+      ctl.isHeld = true;
+    }
+  }
+
   if (v && !G.dead.has(p.id)) {
-    let rem = SPEED * dt / 3000, g = 0;
+    let rem = SPEED * dt / 3000;
+    if (!ctl.isHeld) {
+      const allowed = Math.max(0, 0.25 - ctl.stepMoved);
+      rem = Math.min(rem, allowed);
+    }
+    let distThisFrame = 0, g = 0;
     while (rem > 1e-6 && g++ < 5) {
       if (p.t === 0) {
         if (!nbrs(p.i, p.j).some(n => n[0] === v[0] && n[1] === v[1])) break;
@@ -480,11 +519,16 @@ function update(dt) {
         if (!nbrs(tn[0], tn[1]).some(n => n[0] === v[0] && n[1] === v[1])) break;
         d = p.t >= .5 ? 1 : -1;
       }
-      p.t += d * rem; p.look = d > 0 ? eu : [-eu[0], -eu[1]];
+      const step = d * rem;
+      p.t += step;
+      p.look = d > 0 ? eu : [-eu[0], -eu[1]];
+      distThisFrame += Math.abs(step);
+
       if (p.t >= 1) { rem = p.t - 1; p.last = [p.i, p.j]; p.i = p.bi; p.j = p.bj; p.t = 0; }
       else if (p.t <= 0) { rem = -p.t; p.t = 0; p.bi = p.i; p.bj = p.j; }
       else rem = 0;
     }
+    ctl.stepMoved += distThisFrame;
   }
 
   // Update thrown bomb projectiles (3D flying arc to target)
@@ -495,32 +539,87 @@ function update(dt) {
         // DETONATE WITH INTENSE FIREBLAST (NO CONFETTI / NO CELEBRATION HERE!)
         const x = pj.tx, y = pj.ty;
         VFX.fireblast(x, y, T);
-        shake = 1.6;
+        shake = 1.8;
         GameAudio.play("lose", { vol: 1.4 });
         GameAudio.play("hit", { vol: 1.4 });
 
-        if (pj.targetType === "gate" && pj.targetObj) {
-          const gate = pj.targetObj;
-          gate.open = true;
-          for (const [gx, gy] of gate.blocks) {
-            if (WALL[gy]) WALL[gy][gx] = 0;
-            fx("cloud", gx, gy);
+        // FULL AREA OF EFFECT (AOE) OBLITERATION (R <= 3.5 blocks)
+        const blastRadius = 3.5;
+        let destroyedCount = 0;
+
+        // 1. Saws
+        (G.saws || []).forEach((sObj, k) => {
+          if (sObj.destroyed) return;
+          const [sx, sy] = sawAt(sObj.data, k);
+          if (Math.hypot(sx - x, sy - y) <= blastRadius) {
+            sObj.destroyed = true;
+            destroyedCount++;
+            fx("spark", sx, sy);
           }
-          shadow = buildShadow();
-          toast("Barrier Blown Open with Bomb! 💥");
-        } else if (pj.targetType === "saw" && pj.targetObj) {
-          pj.targetObj.destroyed = true;
-          toast("Saw Wheel Obliterated! 💥");
-        } else if (pj.targetType === "wsaw" && pj.targetObj) {
-          pj.targetObj.destroyed = true;
-          toast("Wall Blade Obliterated! 💥");
-        } else if (pj.targetType === "laser" && pj.targetObj) {
-          pj.targetObj.destroyed = true;
-          pj.targetObj.disabled = true;
-          toast("Laser Generator Blown Up! 💥");
-        } else {
-          toast("BOOM! Bomb Detonated! 💥");
+        });
+
+        // 2. Wall Saws
+        (G.wsaws || []).forEach(wObj => {
+          if (wObj.destroyed) return;
+          const [wx, wy] = wsPos(wObj.data);
+          if (Math.hypot(wx - x, wy - y) <= blastRadius) {
+            wObj.destroyed = true;
+            destroyedCount++;
+            fx("spark", wx, wy);
+          }
+        });
+
+        // 3. Lasers
+        (G.lasers || []).forEach(lObj => {
+          if (lObj.destroyed) return;
+          const [lx, ly] = lObj.data;
+          if (Math.hypot(lx - x, ly - y) <= blastRadius) {
+            lObj.destroyed = true;
+            lObj.disabled = true;
+            destroyedCount++;
+            fx("spark", lx, ly);
+          }
+        });
+
+        // 4. Gates
+        (G.gates || []).forEach(gate => {
+          if (gate.open) return;
+          let hitGate = false;
+          for (const [gx, gy] of gate.blocks) {
+            if (Math.hypot(gx + 0.5 - x, gy + 0.5 - y) <= blastRadius) {
+              hitGate = true;
+              break;
+            }
+          }
+          if (hitGate) {
+            gate.open = true;
+            destroyedCount++;
+            for (const [gx, gy] of gate.blocks) {
+              if (WALL[gy]) WALL[gy][gx] = 0;
+              fx("cloud", gx, gy);
+            }
+            shadow = buildShadow();
+          }
+        });
+
+        // 5. Explicit target fallback
+        if (pj.targetObj) {
+          if (pj.targetType === "gate" && !pj.targetObj.open) {
+            pj.targetObj.open = true;
+            for (const [gx, gy] of pj.targetObj.blocks) {
+              if (WALL[gy]) WALL[gy][gx] = 0;
+              fx("cloud", gx, gy);
+            }
+            shadow = buildShadow();
+          } else if (pj.targetType === "laser") {
+            pj.targetObj.destroyed = true;
+            pj.targetObj.disabled = true;
+          } else {
+            pj.targetObj.destroyed = true;
+          }
         }
+
+        toast(destroyedCount > 0 ? "Hazards Obliterated by Bomb! 💥" : "Bomb Detonated! 💥");
         return false;
       }
       return true;
@@ -1136,10 +1235,10 @@ function draw() {
     ctx.fillRect(0, 0, cw, ch);
 
     // 2. Centered Curved Plaque / Banner Ribbon
-    const bw = Math.min(cw * .92, B * 9.5);
-    const bh = B * 4.6;
+    const bw = Math.min(cw * .95, B * 9.8);
+    const bh = B * 5.6;
     const bx = (cw - bw) / 2;
-    const by = ch * .18 + Math.sin(T / 250) * B * .06;
+    const by = Math.max(B * 0.5, (ch - bh) / 2);
 
     // Plaque outer shadow & dark navy base
     ctx.shadowColor = "rgba(0,0,0,0.65)"; ctx.shadowBlur = B * .5; ctx.shadowOffsetY = B * .15;
@@ -1159,7 +1258,7 @@ function draw() {
 
     // 3. Channel Name Header ("GLOBAL GAMES SK")
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    const headerY = by + B * .75;
+    const headerY = by + B * .62;
     ctx.font = "900 " + Math.round(B * .44) + "px " + font;
     ctx.shadowColor = "rgba(0,0,0,0.8)"; ctx.shadowBlur = B * .2;
     ctx.fillStyle = "#ffffff";
@@ -1168,55 +1267,147 @@ function draw() {
     ctx.fillText("SK", cw / 2 + B * 1.35, headerY);
     ctx.shadowColor = "transparent";
 
-    // 4. Main Headline: "ALL HEROES ESCAPED!"
-    const titleY = headerY + B * .95;
-    ctx.font = "900 " + Math.round(B * .72) + "px " + font;
+    // 4. Determine Dynamic Headline & Subtitle based on survivor status
+    const p1Esc = G.p1 && G.p1.escaped && !G.dead.has("spiderman");
+    const p2Esc = G.p2 && G.p2.escaped && !G.dead.has("gwen");
+    const p1Dead = G.dead.has("spiderman");
+    const p2Dead = G.p2 && G.dead.has("gwen");
+    let headline = "ALL HEROES ESCAPED!";
+    let subtitle = "★★★ GRAND VICTORY ★★★";
+    let subColor = "#22c55e";
+
+    if (G.p1 && G.p2) {
+      if (p1Esc && p2Esc) {
+        headline = "ALL HEROES ESCAPED!";
+        subtitle = "★★★ GRAND VICTORY ★★★";
+        subColor = "#22c55e";
+      } else if (p1Esc && p2Dead) {
+        headline = "SPIDER-MAN ESCAPED!";
+        subtitle = "★★★ SOLO SURVIVOR ★★★";
+        subColor = "#38bdf8";
+      } else if (p2Esc && p1Dead) {
+        headline = "GHOST SPIDER ESCAPED!";
+        subtitle = "★★★ SOLO SURVIVOR ★★★";
+        subColor = "#f472b6";
+      } else if (p1Esc) {
+        headline = "SPIDER-MAN ESCAPED!";
+        subtitle = "★★★ MISSION COMPLETE ★★★";
+        subColor = "#22c55e";
+      }
+    } else {
+      headline = "SPIDER-MAN ESCAPED!";
+      subtitle = "★★★ GRAND VICTORY ★★★";
+      subColor = "#22c55e";
+    }
+
+    // 5. Main Headline
+    const titleY = headerY + B * .85;
+    ctx.font = "900 " + Math.round(B * .70) + "px " + font;
     ctx.fillStyle = "#78350f";
-    ctx.fillText("ALL HEROES ESCAPED!", cw / 2, titleY + B * .06);
+    ctx.fillText(headline, cw / 2, titleY + B * .06);
     const faceG = ctx.createLinearGradient(0, titleY - B * .4, 0, titleY + B * .4);
     faceG.addColorStop(0, "#ffffff"); faceG.addColorStop(0.35, "#fef08a"); faceG.addColorStop(1, "#f59e0b");
     ctx.fillStyle = faceG;
     ctx.strokeStyle = "#050b1c"; ctx.lineWidth = B * .11;
-    ctx.strokeText("ALL HEROES ESCAPED!", cw / 2, titleY);
-    ctx.fillText("ALL HEROES ESCAPED!", cw / 2, titleY);
+    ctx.strokeText(headline, cw / 2, titleY);
+    ctx.fillText(headline, cw / 2, titleY);
 
-    // 5. Subtitle: "★★★ GRAND VICTORY ★★★"
-    const subY = titleY + B * .85;
-    ctx.font = "900 " + Math.round(B * .46) + "px " + font;
-    ctx.fillStyle = "#22c55e"; ctx.shadowColor = "#22c55e"; ctx.shadowBlur = B * .4;
+    // 6. Subtitle
+    const subY = titleY + B * .68;
+    ctx.font = "900 " + Math.round(B * .44) + "px " + font;
+    ctx.fillStyle = subColor; ctx.shadowColor = subColor; ctx.shadowBlur = B * .4;
     ctx.strokeStyle = "#050b1c"; ctx.lineWidth = B * .09;
-    ctx.strokeText("★★★ GRAND VICTORY ★★★", cw / 2, subY);
-    ctx.fillText("★★★ GRAND VICTORY ★★★", cw / 2, subY);
+    ctx.strokeText(subtitle, cw / 2, subY);
+    ctx.fillText(subtitle, cw / 2, subY);
     ctx.shadowColor = "transparent";
 
-    // 6. Dual Hero Safe Status Icons with Glowing 3D Green Ticks
-    const cardY = subY + B * 1.05;
+    // 7. Enlarged Avatar Cards with Status Badges UNDER the image
+    const cardY = subY + B * 1.14;
+    const cr = B * .78;
     const heroes = [G.p1, G.p2].filter(Boolean);
-    const cardSpacing = B * 2.2;
+    const cardSpacing = heroes.length > 1 ? B * 2.7 : 0;
+
     heroes.forEach((hero, idx) => {
       const hx = cw / 2 + (idx - (heroes.length - 1) / 2) * cardSpacing;
-      const cr = B * .52;
+      const isDead = G.dead.has(hero.id);
+      const isEscaped = hero.escaped && !isDead;
+
+      // 1. Avatar Outer Ring & Base
       ctx.save();
-      ctx.fillStyle = "#1e293b"; ctx.strokeStyle = "#22c55e"; ctx.lineWidth = B * .06;
+      if (isEscaped) {
+        ctx.fillStyle = "#0a192f";
+        ctx.strokeStyle = "#22c55e";
+        ctx.shadowColor = "#22c55e";
+        ctx.shadowBlur = B * .32;
+      } else {
+        ctx.fillStyle = "#1e080a";
+        ctx.strokeStyle = "#ef4444";
+        ctx.shadowColor = "#ef4444";
+        ctx.shadowBlur = B * .25;
+      }
+      ctx.lineWidth = B * .07;
       ctx.beginPath(); ctx.arc(hx, cardY, cr, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.shadowColor = "transparent";
       ctx.clip();
+
+      // 2. Avatar Face Image (Full color if escaped, grayscale + dimmed if eliminated)
       const img = hero.id === "spiderman" ? IM.spiderman : IM.gwen;
-      if (img && img.complete) ctx.drawImage(img, hx - cr, cardY - cr, cr * 2, cr * 2);
+      if (img && img.complete) {
+        if (isDead) {
+          ctx.filter = "grayscale(100%) brightness(55%)";
+        }
+        ctx.drawImage(img, hx - cr, cardY - cr, cr * 2, cr * 2);
+        ctx.filter = "none";
+        if (isDead) {
+          ctx.fillStyle = "rgba(220, 38, 38, 0.35)";
+          ctx.beginPath(); ctx.arc(hx, cardY, cr, 0, 7); ctx.fill();
+        }
+      }
       ctx.restore();
 
-      const tickScale = 1 + .12 * Math.sin(T / 120 + idx);
-      const tx = hx + cr * .65, ty = cardY - cr * .45, tr = B * .24 * tickScale;
-      ctx.save();
-      ctx.fillStyle = "#22c55e"; ctx.shadowColor = "#22c55e"; ctx.shadowBlur = B * .3;
-      ctx.beginPath(); ctx.arc(tx, ty, tr, 0, 7); ctx.fill();
-      ctx.fillStyle = "#ffffff"; ctx.font = "900 " + Math.round(tr * 1.3) + "px sans-serif";
+      // 3. Hero Name (Clean, placed underneath avatar)
+      const nameY = cardY + cr + B * .28;
+      ctx.font = "800 " + Math.round(B * .28) + "px " + font;
+      ctx.fillStyle = isEscaped ? "#f8fafc" : "#94a3b8";
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText("✔", tx, ty + 1);
-      ctx.restore();
+      ctx.fillText(hero.id === "spiderman" ? "Spider-Man" : "Ghost Spider", hx, nameY);
 
-      ctx.font = "800 " + Math.round(B * .26) + "px " + font;
-      ctx.fillStyle = "#ffffff"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText(hero.id === "spiderman" ? "Spider-Man" : "Ghost Spider", hx, cardY + cr + B * .26);
+      // 4. Status Badge UNDER the image (below name)
+      const badgeY = nameY + B * .38;
+      const pillW = B * 1.85, pillH = B * .44;
+      const bx0 = hx - pillW / 2, by0 = badgeY - pillH / 2;
+
+      ctx.save();
+      if (isEscaped) {
+        const bgPill = ctx.createLinearGradient(bx0, by0, bx0, by0 + pillH);
+        bgPill.addColorStop(0, "#15803d"); bgPill.addColorStop(1, "#166534");
+        ctx.fillStyle = bgPill;
+        ctx.strokeStyle = "#4ade80";
+        ctx.lineWidth = B * .035;
+        ctx.shadowColor = "#22c55e"; ctx.shadowBlur = B * .22;
+        rrect(ctx, bx0, by0, pillW, pillH, pillH / 2);
+        ctx.fill(); ctx.stroke();
+
+        ctx.shadowColor = "transparent";
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "900 " + Math.round(B * .22) + "px " + font;
+        ctx.fillText("✔ ESCAPED", hx, badgeY + 1);
+      } else {
+        const bgPill = ctx.createLinearGradient(bx0, by0, bx0, by0 + pillH);
+        bgPill.addColorStop(0, "#991b1b"); bgPill.addColorStop(1, "#7f1d1d");
+        ctx.fillStyle = bgPill;
+        ctx.strokeStyle = "#f87171";
+        ctx.lineWidth = B * .035;
+        ctx.shadowColor = "#ef4444"; ctx.shadowBlur = B * .22;
+        rrect(ctx, bx0, by0, pillW, pillH, pillH / 2);
+        ctx.fill(); ctx.stroke();
+
+        ctx.shadowColor = "transparent";
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "900 " + Math.round(B * .20) + "px " + font;
+        ctx.fillText("❌ ELIMINATED", hx, badgeY + 1);
+      }
+      ctx.restore();
     });
 
     ctx.restore();
@@ -1253,7 +1444,6 @@ function loop(now) {
   requestAnimationFrame(loop);
 }
 
-const ctl = { key: [], ptr: null, pad: null };
 const KM = { ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right", w: "up", s: "down", a: "left", d: "right" };
 const km = e => KM[e.key.length > 1 ? e.key : e.key.toLowerCase()];
 
