@@ -221,3 +221,22 @@ In the YouTube Studio screenshot uploaded:
      - **Original audio (Game SFX)**: 90% – 100%
      - **Added sound (Music)**: 40% – 50%
   6. When added through YouTube's official "Add sound" button, YouTube automatically handles the music licensing and your video **WILL NEVER GET CLAIMED OR BLOCKED!**
+
+
+---
+
+## 🎶 12. Victory Celebration Music & Audio Engine Integration
+
+1. **Custom Celebration Audio Track**:
+   - High-energy victory fanfare track integrated directly into the game's Web Audio engine from the user's uploaded celebration audio (`spider-maze/audio/music/victory_celebration.mp3` & `spider-maze/audio/audio-data.js`).
+   - Packed as high-fidelity Base64 in `window.AUDIO_DATA.sfx.win` with zero external network dependencies.
+2. **Dynamic Win Playback**:
+   - Triggers immediately when all living heroes cross the exit marker into `state === "won"`.
+   - Plays with elevated mix gain ($2.2\times$) alongside ducked ambient loops so the victory fanfare punches through clearly.
+   - Configured with `loop = true` to provide continuous celebratory background music for YouTube Shorts recording without awkward cutoffs.
+3. **Clean Teardown & Transition Guards**:
+   - Guaranteed immediate stop via `GameAudio.stopWin()` and `GameAudio.stopLoops()` whenever:
+     - Player clicks the in-game restart button (`#rs`) or retry button (`#btn-retry`).
+     - Player navigates to the level select screen (`#mn` or `#btn-choose-level`).
+     - A new level is loaded (`newGame()` lifecycle).
+   - Prevents any overlapping audio bleed into subsequent gameplay runs.

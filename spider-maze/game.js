@@ -25,7 +25,7 @@ const Snd = {
     if (k === "hit") GameAudio.play("hit", { rand: .06 });
     else if (k === "heal") GameAudio.play("heal", { rand: .03 });
     else if (k === "shield") GameAudio.play("shield");
-    else if (k === "win") { GameAudio.duck(2); GameAudio.play("win"); }
+    else if (k === "win") { GameAudio.duck(2); GameAudio.play("win", { vol: 2.2 }); }
     else if (k === "lose") GameAudio.play("lose");
   },
   music: p => { if (p) GameAudio.begin().then(() => { if (state === "play") GameAudio.musicStart(); }); else GameAudio.musicStop(); },
@@ -308,6 +308,8 @@ function ui() {
 function fx(type, x, y) { VFX.add(type, x, y, T); }
 
 function showMenu(mode) {
+  GameAudio.stopLoops();
+  GameAudio.stopWin();
   $("frame").classList.remove("playing");
   $("ov").hidden = false;
   $("step-ratio").hidden = (mode !== "ratio");
