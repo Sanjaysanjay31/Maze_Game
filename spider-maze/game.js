@@ -1,5 +1,5 @@
 "use strict";
-const LV = window.LEVELS, A = window.ASSETS, M = 3, SS = 14, SPEED = 6.2, MAXHP = 5;
+const LV = window.LEVELS, A = window.ASSETS, M = 3, SS = 14, SPEED = 8.5, MAXHP = 5;
 let li = 0, L, W, H, CW, CH, WALL;
 const solid = (x, y) => x < 0 || y < 0 || x >= W || y >= H || WALL[y][x] === 1;
 const nbrs = (i, j) => {
@@ -270,7 +270,7 @@ function newGame() {
       g.blocks.forEach(([gx, gy]) => { if (WALL[gy]) WALL[gy][gx] = 1; });
     }
   });
-  T = 0; VFX.clear(); GameAudio.stopLoops();
+  T = 0; VFX.clear(); GameAudio.stopLoops(); winConfetti = null;
   const [x, y] = pos(G.p); camX = x; camY = y;
   ui();
 }
@@ -468,6 +468,49 @@ function throwHeroBomb(h) {
   toast(`${h.name} threw a Bomb! 💣💥`);
 }
 
+const WIN_CONFETTI_COLORS = ["#00f0ff", "#ff0077", "#39ff14", "#ffd23f", "#2563eb", "#ff7700", "#a855f7", "#ffffff", "#ff1744"];
+let winConfetti = null;
+
+function initWinConfetti() {
+  winConfetti = [];
+  const count = 42; // Moderate density (~half of reference image)
+  for (let i = 0; i < count; i++) {
+    winConfetti.push({
+      x: Math.random() * (cw || 500),
+      y: Math.random() * (ch || 900),
+      w: (B || 36) * (0.24 + Math.random() * 0.16),
+      h: (B || 36) * (0.16 + Math.random() * 0.14),
+      c: WIN_CONFETTI_COLORS[i % WIN_CONFETTI_COLORS.length],
+      vy: (B || 36) * (0.045 + Math.random() * 0.055),
+      vx: (Math.random() - 0.5) * (B || 36) * 0.025,
+      rot: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() - 0.5) * 0.07,
+      flip: Math.random() * Math.PI * 2,
+      flipSpeed: 0.05 + Math.random() * 0.06,
+      swayFreq: 0.002 + Math.random() * 0.003,
+      swayAmp: (B || 36) * (0.015 + Math.random() * 0.02)
+    });
+  }
+}
+
+function updateWinConfetti(dt) {
+  if (!winConfetti) initWinConfetti();
+  const tf = Math.min(2.5, dt / 16.6);
+  for (const p of winConfetti) {
+    p.y += p.vy * tf;
+    p.x += (p.vx + Math.sin(T * p.swayFreq + p.rot) * p.swayAmp) * tf;
+    p.rot += p.rotSpeed * tf;
+    p.flip += p.flipSpeed * tf;
+
+    if (p.y > ch + 20) {
+      p.y = -20 - Math.random() * 30;
+      p.x = Math.random() * cw;
+    }
+    if (p.x < -20) p.x = cw + 15;
+    else if (p.x > cw + 20) p.x = -15;
+  }
+}
+
 const ctl = {
   key: [], ptr: null, pad: null,
   currDir: null,
@@ -479,7 +522,12 @@ const ctl = {
 function held() { return ctl.pad || ctl.ptr || ctl.key[ctl.key.length - 1] || null; }
 
 function update(dt) {
-  if (state !== "play") return;
+  if (state !== "play") {
+    if (state === "won") {
+      updateWinConfetti(dt);
+    }
+    return;
+  }
   T += dt; G.t += dt;
   const p = G.p;
   const curInput = held();
@@ -495,7 +543,7 @@ function update(dt) {
       ctl.pressT = T;
       ctl.stepMoved = 0;
       ctl.isHeld = false;
-    } else if (!ctl.isHeld && (T - ctl.pressT) >= 200) {
+    } else if (!ctl.isHeld && (T - ctl.pressT) >= 75) {
       ctl.isHeld = true;
     }
   }
@@ -1235,10 +1283,10 @@ function draw() {
     ctx.fillRect(0, 0, cw, ch);
 
     // 2. Centered Curved Plaque / Banner Ribbon
-    const bw = Math.min(cw * .95, B * 9.8);
-    const bh = B * 5.6;
+    const bw = Math.min(cw * .96, B * 9.8);
+    const bh = B * 6.5;
     const bx = (cw - bw) / 2;
-    const by = Math.max(B * 0.5, (ch - bh) / 2);
+    const by = Math.max(B * 0.35, (ch - bh) / 2);
 
     // Plaque outer shadow & dark navy base
     ctx.shadowColor = "rgba(0,0,0,0.65)"; ctx.shadowBlur = B * .5; ctx.shadowOffsetY = B * .15;
@@ -1258,7 +1306,7 @@ function draw() {
 
     // 3. Channel Name Header ("GLOBAL GAMES SK")
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    const headerY = by + B * .62;
+    const headerY = by + B * .58;
     ctx.font = "900 " + Math.round(B * .44) + "px " + font;
     ctx.shadowColor = "rgba(0,0,0,0.8)"; ctx.shadowBlur = B * .2;
     ctx.fillStyle = "#ffffff";
@@ -1301,7 +1349,7 @@ function draw() {
     }
 
     // 5. Main Headline
-    const titleY = headerY + B * .85;
+    const titleY = headerY + B * .82;
     ctx.font = "900 " + Math.round(B * .70) + "px " + font;
     ctx.fillStyle = "#78350f";
     ctx.fillText(headline, cw / 2, titleY + B * .06);
@@ -1313,7 +1361,7 @@ function draw() {
     ctx.fillText(headline, cw / 2, titleY);
 
     // 6. Subtitle
-    const subY = titleY + B * .68;
+    const subY = titleY + B * .65;
     ctx.font = "900 " + Math.round(B * .44) + "px " + font;
     ctx.fillStyle = subColor; ctx.shadowColor = subColor; ctx.shadowBlur = B * .4;
     ctx.strokeStyle = "#050b1c"; ctx.lineWidth = B * .09;
@@ -1321,60 +1369,75 @@ function draw() {
     ctx.fillText(subtitle, cw / 2, subY);
     ctx.shadowColor = "transparent";
 
-    // 7. Enlarged Avatar Cards with Status Badges UNDER the image
-    const cardY = subY + B * 1.14;
-    const cr = B * .78;
+    // 7. Large RECTANGULAR Character Cards with Badges UNDER the image
+    const cardTop = subY + B * .45;
+    const cardW = B * 2.3;
+    const cardH = B * 2.5;
+    const cardR = B * .28;
     const heroes = [G.p1, G.p2].filter(Boolean);
-    const cardSpacing = heroes.length > 1 ? B * 2.7 : 0;
+    const cardSpacing = heroes.length > 1 ? cardW + B * .7 : 0;
 
     heroes.forEach((hero, idx) => {
       const hx = cw / 2 + (idx - (heroes.length - 1) / 2) * cardSpacing;
+      const cx = hx - cardW / 2, cy = cardTop;
       const isDead = G.dead.has(hero.id);
       const isEscaped = hero.escaped && !isDead;
 
-      // 1. Avatar Outer Ring & Base
+      // 1. Rectangular Card Base & Outer Glow Border
       ctx.save();
       if (isEscaped) {
         ctx.fillStyle = "#0a192f";
         ctx.strokeStyle = "#22c55e";
         ctx.shadowColor = "#22c55e";
-        ctx.shadowBlur = B * .32;
+        ctx.shadowBlur = B * .36;
       } else {
         ctx.fillStyle = "#1e080a";
         ctx.strokeStyle = "#ef4444";
         ctx.shadowColor = "#ef4444";
-        ctx.shadowBlur = B * .25;
+        ctx.shadowBlur = B * .3;
       }
-      ctx.lineWidth = B * .07;
-      ctx.beginPath(); ctx.arc(hx, cardY, cr, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.lineWidth = B * .075;
+      rrect(ctx, cx, cy, cardW, cardH, cardR);
+      ctx.fill(); ctx.stroke();
       ctx.shadowColor = "transparent";
-      ctx.clip();
 
-      // 2. Avatar Face Image (Full color if escaped, grayscale + dimmed if eliminated)
+      // Inner subtle glow border
+      ctx.strokeStyle = isEscaped ? "rgba(34, 197, 94, 0.45)" : "rgba(239, 68, 68, 0.45)";
+      ctx.lineWidth = B * .025;
+      rrect(ctx, cx + B * .06, cy + B * .06, cardW - B * .12, cardH - B * .12, cardR * .8);
+      ctx.stroke();
+
+      // 2. Rectangular Character Image (Clipped inside rounded rectangle)
+      ctx.save();
+      rrect(ctx, cx, cy, cardW, cardH, cardR);
+      ctx.clip();
       const img = hero.id === "spiderman" ? IM.spiderman : IM.gwen;
       if (img && img.complete) {
         if (isDead) {
           ctx.filter = "grayscale(100%) brightness(55%)";
         }
-        ctx.drawImage(img, hx - cr, cardY - cr, cr * 2, cr * 2);
+        const pad = B * .08;
+        ctx.drawImage(img, cx + pad, cy + pad, cardW - pad * 2, cardH - pad * 2);
         ctx.filter = "none";
         if (isDead) {
           ctx.fillStyle = "rgba(220, 38, 38, 0.35)";
-          ctx.beginPath(); ctx.arc(hx, cardY, cr, 0, 7); ctx.fill();
+          rrect(ctx, cx, cy, cardW, cardH, cardR);
+          ctx.fill();
         }
       }
       ctx.restore();
+      ctx.restore();
 
-      // 3. Hero Name (Clean, placed underneath avatar)
-      const nameY = cardY + cr + B * .28;
+      // 3. Hero Name (Clean, placed underneath rectangular card)
+      const nameY = cy + cardH + B * .26;
       ctx.font = "800 " + Math.round(B * .28) + "px " + font;
       ctx.fillStyle = isEscaped ? "#f8fafc" : "#94a3b8";
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
       ctx.fillText(hero.id === "spiderman" ? "Spider-Man" : "Ghost Spider", hx, nameY);
 
-      // 4. Status Badge UNDER the image (below name)
+      // 4. Status Badge UNDER the card (below name)
       const badgeY = nameY + B * .38;
-      const pillW = B * 1.85, pillH = B * .44;
+      const pillW = B * 1.9, pillH = B * .44;
       const bx0 = hx - pillW / 2, by0 = badgeY - pillH / 2;
 
       ctx.save();
@@ -1409,6 +1472,20 @@ function draw() {
       }
       ctx.restore();
     });
+
+    // 8. Cascading Celebration Confetti Shower (3D Fluttering Paper Flakes, like reference image!)
+    if (winConfetti) {
+      for (const cf of winConfetti) {
+        ctx.save();
+        ctx.translate(cf.x, cf.y);
+        ctx.rotate(cf.rot);
+        const scaleY = Math.cos(cf.flip);
+        ctx.scale(1, scaleY);
+        ctx.fillStyle = cf.c;
+        ctx.fillRect(-cf.w / 2, -cf.h / 2, cf.w, cf.h);
+        ctx.restore();
+      }
+    }
 
     ctx.restore();
   }

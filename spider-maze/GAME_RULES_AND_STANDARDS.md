@@ -160,27 +160,26 @@ Hero 1 (Spider-Man) and Hero 2 (Ghost Spider) **must never have identical or sym
      - **Both Heroes Survived**: `"ALL HEROES ESCAPED!"` with `"★★★ GRAND VICTORY ★★★"` in glowing emerald green (`#22c55e`).
      - **Solo Survivor (Spider-Man)**: `"SPIDER-MAN ESCAPED!"` with `"★★★ SOLO SURVIVOR ★★★"` in glowing cyan (`#38bdf8`).
      - **Solo Survivor (Ghost Spider)**: `"GHOST SPIDER ESCAPED!"` with `"★★★ SOLO SURVIVOR ★★★"` in glowing pink (`#f472b6`).
-   - **Enlarged Character Status Badges**:
-     - **Noticeably Increased Avatar Scale**: Portraits rendered ~50% larger (`cr = B * 0.78`), crisp and high-contrast.
+   - **Enlarged Rectangular Character Portrait Cards**:
+     - **Card Dimensions**: Replaced circular avatars with bold **rounded rectangular cards** (`2.3B × 2.5B` with `0.28B` corner radius) — over 2.5× the display area!
      - **Clear Unobscured Faces**: No badges or ticks are placed over the characters' faces.
-     - **Badges Placed Underneath Avatar**:
-       - **Escaped Hero**: Glowing emerald green ring, full vibrant colors, hero name, and a stylish **`✔ ESCAPED`** green pill badge underneath.
-       - **Eliminated Hero**: Crimson red ring, grayscale + dimmed silhouette with red tint, hero name, and a **`❌ ELIMINATED`** red pill badge underneath.
-   - **Festive FX**: Continuous 360-degree multicolored firecracker rockets (`VFX.cracker`) and golden confetti ribbons (`VFX.confetti`) across the screen. Zero modal popups to keep YouTube recordings 100% clean.
+     - **Escaped Hero Card**: Glowing 3D emerald border (`#22c55e`), full vibrant colors, hero name, and a stylish **`✔ ESCAPED`** green pill badge underneath.
+     - **Eliminated Hero Card**: Glowing crimson red border (`#ef4444`), grayscale + 55% dimmed silhouette with red tint, hero name, and a **`❌ ELIMINATED`** red pill badge underneath.
+   - **Cascading 3D Paper Confetti Shower**:
+     - 42 fluttering paper confetti rectangles in festive colors (cyan, magenta, yellow, neon green, orange, royal blue, purple, white, red).
+     - Gentle 3D perspective tumbling (`scaleY = Math.cos(flip)`) cascading across the screen at half the density of the reference image, keeping the victory plaque clean and celebratory.
 
 ---
 
-## 🎯 9. Precise Movement Controls (25% Tap vs Continuous Hold)
+## 🎯 9. Precise Movement Controls (25% Tap vs Smooth Full-Speed Hold)
 
 1. **Single Click / Tap Directional Quantum ($25\%$)**:
-   - When tapping or clicking any directional control (arrow buttons, keys, or canvas pointer swipe), the character advances by **at most 25% ($0.25$ of a corridor tile)**.
+   - When tapping or clicking any directional control (arrow buttons, keys, or mouse swipe), the character advances by **at most 25% ($0.25$ of a corridor tile)**.
    - Prevents overshooting corridors or sliding unintentionally into hazards.
-2. **Continuous Hold ($> 200\text{ms}$)**:
-   - When holding a direction button continuously for longer than $200\text{ms}$, the character transitions seamlessly into full-speed continuous running.
+2. **Continuous Hold with Zero Lag ($SPEED = 8.5$)**:
+   - When holding a directional control continuously past $75\text{ms}$, the character transitions seamlessly into full-speed ($8.5$) continuous running with **ZERO pause, ZERO hitch, and ZERO lag**.
 3. **Instant Stop**:
    - The exact moment input is released (`pointerup`, `keyup`), movement halts immediately with **zero drift, sliding, or residual inertia**.
-4. **Calibrated Movement Speed**:
-   - Base movement speed set to $6.2$ (yielding balanced, responsive navigation).
 
 ---
 
