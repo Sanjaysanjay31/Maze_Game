@@ -199,8 +199,15 @@ function buildCast() {
     const i = new Image(); i.src = A[n] || ""; i.alt = n; d.appendChild(i);
     // Clicking hero avatar switches active character!
     d.addEventListener("click", () => {
-      if (n === "spiderman") { G.active = 1; ui(); }
-      else if (n === "gwen" && G.p2) { G.active = 2; ui(); }
+      if (n === "spiderman" && !G.dead.has("spiderman")) {
+        G.active = 1;
+        const [nx, ny] = pos(G.p1); camX = nx; camY = ny;
+        ui();
+      } else if (n === "gwen" && G.p2 && !G.dead.has("gwen")) {
+        G.active = 2;
+        const [nx, ny] = pos(G.p2); camX = nx; camY = ny;
+        ui();
+      }
     });
     c.appendChild(d);
   };
@@ -304,6 +311,32 @@ function show(title, msg, stars, mode) {
   showMenu(mode || "results");
 }
 
+function triggerDefeat(reason) {
+  if (state === "over" || state === "won") return;
+  state = "over"; Snd.music(false); Snd.sfx("lose");
+  G.defeatMsg = reason || "CANNOT ESCAPE ALONE!";
+  toast("MISSION FAILED!");
+}
+
+function checkCoopDefeat() {
+  if (!G.p2) return false;
+  for (const gate of (G.gates || [])) {
+    if (!gate.open) {
+      const sw = (G.switches || []).find(s => s.targets && s.targets.includes(gate.id));
+      if (sw && !sw.active && sw.hero && G.dead.has(sw.hero)) {
+        triggerDefeat("PARTNER LOST — TRAPPED FOREVER! 💔");
+        return true;
+      }
+    }
+  }
+  const living = [G.p1, G.p2].filter(p => p && !G.dead.has(p.id));
+  if (living.length === 0) {
+    triggerDefeat("ALL HEROES OUT OF HEALTH!");
+    return true;
+  }
+  return false;
+}
+
 function hitHero(h, msg) {
   if (state !== "play") return;
   if (T < h.shield) {
@@ -314,18 +347,27 @@ function hitHero(h, msg) {
     return;
   }
   if (T < h.inv) return;
-  h.hp--; h.inv = T + 1600; shake = 1; Snd.sfx("hit"); VFX.flash("255,40,60", T); GameAudio.duck(1.3);
+  h.hp--; h.inv = T + 600; shake = 1; Snd.sfx("hit"); VFX.flash("255,40,60", T); GameAudio.duck(1.3);
   fx("cloud", ...pos(h)); if (navigator.vibrate) navigator.vibrate(70);
+  h.i = h.last[0]; h.j = h.last[1]; h.bi = h.i; h.bj = h.j; h.t = 0;
   if (h.hp <= 0) {
     G.dead.add(h.id);
-    const allDead = (!G.p1 || G.dead.has(G.p1.id)) && (!G.p2 || G.dead.has(G.p2.id));
-    if (allDead) {
-      state = "over"; Snd.sfx("lose"); ui();
-      show("Heroes Out of Health!", "You collected " + G.score + " of " + L.coins.length + " stars. Try again or switch missions.", "", "results");
-      return;
+    toast(`${h.name} is down!`);
+    fx("cloud", ...pos(h));
+    if (checkCoopDefeat()) { ui(); return; }
+    const living = [G.p1, G.p2].filter(p => p && !G.dead.has(p.id));
+    if (living.length === 0) {
+      triggerDefeat("ALL HEROES OUT OF HEALTH!");
+      ui(); return;
     }
+    if (G.p.id === h.id) {
+      G.active = living[0].id === "spiderman" ? 1 : 2;
+      toast(`Switched to ${living[0].name}!`);
+      const [nx, ny] = pos(G.p); camX = nx; camY = ny;
+    }
+    ui(); return;
   }
-  toast(msg); h.i = h.last[0]; h.j = h.last[1]; h.bi = h.i; h.bj = h.j; h.t = 0;
+  toast(msg);
 }
 
 function held() { return ctl.pad || ctl.ptr || ctl.key[ctl.key.length - 1] || null; }
@@ -366,8 +408,8 @@ function update(dt) {
     L.lasers.forEach((l, k) => {
       if (l.disabled || !lOn(k)) return;
       const hz = l[2] === "h";
-      const inX = hz ? (px >= l[0] - 2.5 && px <= l[0] + 2.5) : Math.abs(px - l[0]) < 0.95;
-      const inY = hz ? Math.abs(py - l[1]) < 0.95 : (py >= l[1] - 2.5 && py <= l[1] + 2.5);
+      const inX = hz ? Math.abs(px - l[0]) <= 1.25 : Math.abs(px - l[0]) <= 0.8;
+      const inY = hz ? Math.abs(py - l[1]) <= 0.8 : Math.abs(py - l[1]) <= 1.25;
       if (inX && inY) hitHero(h, "Laser zap!");
     });
 
@@ -443,18 +485,19 @@ function update(dt) {
     Snd.sfx("win");
     toast("★ ALL HEROES ESCAPED! VICTORY! ★");
     const [p1x, p1y] = pos(G.p1);
-    VFX.confetti(p1x, p1y, T);
-    if (G.p2) { const [p2x, p2y] = pos(G.p2); VFX.confetti(p2x, p2y, T); }
+    VFX.cracker(p1x, p1y, T); VFX.confetti(p1x, p1y, T);
+    if (G.p2) { const [p2x, p2y] = pos(G.p2); VFX.cracker(p2x, p2y, T); VFX.confetti(p2x, p2y, T); }
     VFX.add("ring", cen(...L.exit)[0], cen(...L.exit)[1], T, { c: "#22c55e" });
     // NO POPUP MODAL! Screen stays 100% clean for seamless video recording!
   }
 
   if (state === "won") {
-    if (T - (G.lastWinVFX || 0) > 350) {
+    if (T - (G.lastWinVFX || 0) > 280) {
       G.lastWinVFX = T;
       const [ex, ey] = cen(...L.exit);
-      VFX.confetti(ex + (Math.random() - .5) * 6, ey + (Math.random() - .5) * 4, T);
-      fx("spark", ex + (Math.random() - .5) * 6, ey + (Math.random() - .5) * 6);
+      const rx = ex + (Math.random() - .5) * 8, ry = ey + (Math.random() - .5) * 6;
+      VFX.cracker(rx, ry, T);
+      if (Math.random() < 0.65) VFX.confetti(rx, ry, T);
     }
   }
 
@@ -482,14 +525,17 @@ function draw() {
   L.lasers.forEach((l, k) => {
     if (l.disabled) return;
     const on = lOn(k), w = lWarn(k); if (!on && !(w && Math.floor(T / 60) % 2)) return;
-    const hz = l[2] === "h", col = hz ? "#ff163c" : "#2f8cff", glow = hz ? "#ff4872" : "#6ec3ff", a = hz ? [X(l[0] - 2.2), Y(l[1])] : [X(l[0]), Y(l[1] - 2.2)], b = hz ? [X(l[0] + 2.2), Y(l[1])] : [X(l[0]), Y(l[1] + 2.2)];
+    const hz = l[2] === "h", col = hz ? "#ff163c" : "#2f8cff", glow = hz ? "#ff4872" : "#6ec3ff";
+    const span = 1.05;
+    const a = hz ? [X(l[0] - span), Y(l[1])] : [X(l[0]), Y(l[1] - span)];
+    const b = hz ? [X(l[0] + span), Y(l[1])] : [X(l[0]), Y(l[1] + span)];
     ctx.save(); ctx.lineCap = "round"; const pl = on ? (1 + .18 * Math.sin(T / 45 + k)) : .4;
     ctx.shadowColor = on ? col : "rgba(255,100,100,.35)"; ctx.shadowBlur = on ? B * .85 * pl : B * .2;
-    ctx.strokeStyle = on ? col : "rgba(255,220,220,.3)"; ctx.lineWidth = on ? B * .28 * pl : B * .05; ctx.beginPath(); ctx.moveTo(...a); ctx.lineTo(...b); ctx.stroke();
+    ctx.strokeStyle = on ? col : "rgba(255,220,220,.3)"; ctx.lineWidth = on ? B * .25 * pl : B * .05; ctx.beginPath(); ctx.moveTo(...a); ctx.lineTo(...b); ctx.stroke();
     if (on) {
-      ctx.shadowBlur = B * .35; ctx.strokeStyle = glow; ctx.lineWidth = B * .14; ctx.beginPath(); ctx.moveTo(...a); ctx.lineTo(...b); ctx.stroke();
-      ctx.shadowBlur = 0; ctx.strokeStyle = "#fff"; ctx.lineWidth = B * .065; ctx.beginPath(); ctx.moveTo(...a); ctx.lineTo(...b); ctx.stroke();
-      [a, b].forEach(([ex, ey]) => { ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(ex, ey, B * .08, 0, 7); ctx.fill(); ctx.fillStyle = col; ctx.beginPath(); ctx.arc(ex, ey, B * .045, 0, 7); ctx.fill(); });
+      ctx.shadowBlur = B * .35; ctx.strokeStyle = glow; ctx.lineWidth = B * .12; ctx.beginPath(); ctx.moveTo(...a); ctx.lineTo(...b); ctx.stroke();
+      ctx.shadowBlur = 0; ctx.strokeStyle = "#fff"; ctx.lineWidth = B * .055; ctx.beginPath(); ctx.moveTo(...a); ctx.lineTo(...b); ctx.stroke();
+      [a, b].forEach(([ex, ey]) => { ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(ex, ey, B * .075, 0, 7); ctx.fill(); ctx.fillStyle = col; ctx.beginPath(); ctx.arc(ex, ey, B * .04, 0, 7); ctx.fill(); });
     }
     ctx.restore();
   });
@@ -533,26 +579,46 @@ function draw() {
     ctx.strokeStyle = "#eafff8"; ctx.lineWidth = B * .08; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(px, py, B * (.35 + i * .2), T / 300 + i * 2, T / 300 + i * 2 + 3.6); ctx.stroke(); }
   }
 
-  // Dynamic Gates
+  // Wall Blocks (normal walls keep consistent unified level styling)
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) {
+      if (solid(x, y)) {
+        const isGate = (G.gates || []).some(g => !g.open && g.blocks.some(([gx, gy]) => gx === x && gy === y));
+        if (!isGate) ctx.drawImage(wallT[hs(x, y) % 4], Math.round(X(x)), Math.round(Y(y)), bs, bs);
+      }
+    }
+  }
+
+  // Dynamic Locked Barrier Gates (Distinct high-contrast locked route styling!)
   for (const gate of (G.gates || [])) {
     if (!gate.open) {
       for (const [gx, gy] of gate.blocks) {
         const px = X(gx), py = Y(gy), S = bs;
         ctx.save();
-        ctx.fillStyle = "#1a2238"; ctx.fillRect(Math.round(px), Math.round(py), S, S);
+        // Heavy locked metal base
+        ctx.fillStyle = "#0c1322"; ctx.fillRect(Math.round(px), Math.round(py), S, S);
+        
+        // Hazard caution warning stripes (vibrant yellow and black/crimson)
         ctx.save(); ctx.beginPath(); ctx.rect(Math.round(px), Math.round(py), S, S); ctx.clip();
-        ctx.strokeStyle = "#ffd23f"; ctx.lineWidth = S * .22;
-        for (let d = -S; d < S * 2; d += S * .44) { ctx.beginPath(); ctx.moveTo(px + d, py); ctx.lineTo(px + d + S, py + S); ctx.stroke(); }
+        ctx.strokeStyle = "#ffd23f"; ctx.lineWidth = S * .24;
+        for (let d = -S; d < S * 2; d += S * .48) {
+          ctx.beginPath(); ctx.moveTo(px + d, py); ctx.lineTo(px + d + S, py + S); ctx.stroke();
+        }
         ctx.restore();
-        ctx.strokeStyle = "#38bdf8"; ctx.lineWidth = Math.max(2, S * .06); ctx.strokeRect(Math.round(px), Math.round(py), S, S);
-        ctx.fillStyle = "#ff2d44"; ctx.shadowColor = "#ff2d44"; ctx.shadowBlur = S * .3; ctx.beginPath(); ctx.arc(px + S / 2, py + S / 2, S * .12, 0, 7); ctx.fill();
+
+        // Thick distinct security border (glowing red lock border)
+        ctx.strokeStyle = "#ff3b30"; ctx.lineWidth = Math.max(3, S * .08);
+        ctx.strokeRect(Math.round(px), Math.round(py), S, S);
+
+        // Center electronic lock beacon (pulsing red warning light)
+        const pulse = .7 + .3 * Math.sin(T / 120);
+        ctx.fillStyle = "#ff1744"; ctx.shadowColor = "#ff1744"; ctx.shadowBlur = S * .4 * pulse;
+        ctx.beginPath(); ctx.arc(px + S / 2, py + S / 2, S * .16, 0, 7); ctx.fill();
+        ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(px + S / 2, py + S / 2, S * .06, 0, 7); ctx.fill();
         ctx.restore();
       }
     }
   }
-
-  // Wall Blocks
-  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (solid(x, y)) ctx.drawImage(wallT[hs(x, y) % 4], Math.round(X(x)), Math.round(Y(y)), bs, bs);
 
   // Wall Switches
   for (const sw of (G.switches || [])) {
@@ -645,6 +711,30 @@ function draw() {
     ctx.fillText("★★★ VICTORY! ★★★", cw / 2, vy + B * .68);
     ctx.restore();
   }
+
+  // On-Canvas Defeat / Sad Ending Banner (No modal popup!)
+  if (state === "over") {
+    ctx.save();
+    ctx.fillStyle = "rgba(10, 2, 4, 0.65)";
+    ctx.fillRect(0, 0, cw, ch);
+    const font = getComputedStyle(document.body).getPropertyValue("--display") || "sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    const vy = ch * .28 + Math.sin(T / 350) * B * .05;
+    ctx.font = "900 " + Math.round(B * .68) + "px " + font;
+    ctx.shadowColor = "#ff0033"; ctx.shadowBlur = B * .6;
+    ctx.strokeStyle = "#000"; ctx.lineWidth = B * .14;
+    ctx.fillStyle = "#ff1744";
+    ctx.strokeText("MISSION FAILED", cw / 2, vy);
+    ctx.fillText("MISSION FAILED", cw / 2, vy);
+
+    ctx.font = "900 " + Math.round(B * .38) + "px " + font;
+    ctx.shadowColor = "#fbbf24"; ctx.shadowBlur = B * .3;
+    ctx.fillStyle = "#ffd23f";
+    const sub = G.defeatMsg || "CANNOT ESCAPE ALONE! 💔";
+    ctx.strokeText(sub, cw / 2, vy + B * .72);
+    ctx.fillText(sub, cw / 2, vy + B * .72);
+    ctx.restore();
+  }
 }
 
 function loop(now) {
@@ -659,8 +749,16 @@ const km = e => KM[e.key.length > 1 ? e.key : e.key.toLowerCase()];
 
 // Keyboard switching: '1' for Spider-Man, '2' for Ghost Spider (invisible on screen)
 addEventListener("keydown", e => {
-  if (e.key === "1") { G.active = 1; ui(); return; }
-  if (e.key === "2" && G.p2) { G.active = 2; ui(); return; }
+  if (e.key === "1" && !G.dead.has("spiderman")) {
+    G.active = 1;
+    const [nx, ny] = pos(G.p1); camX = nx; camY = ny;
+    ui(); return;
+  }
+  if (e.key === "2" && G.p2 && !G.dead.has("gwen")) {
+    G.active = 2;
+    const [nx, ny] = pos(G.p2); camX = nx; camY = ny;
+    ui(); return;
+  }
   const m = km(e); if (!m) return;
   e.preventDefault(); if (!ctl.key.includes(m)) ctl.key.push(m);
 });
