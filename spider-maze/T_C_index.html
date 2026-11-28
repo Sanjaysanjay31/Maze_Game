@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Tom &amp; Cherry Arcade Maze</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@700;800;900&display=swap">
+<link rel="stylesheet" href="style.css">
+<style>
+#cast .ct{flex:0 0 calc(101.5px*var(--u));width:calc(101.5px*var(--u));border-radius:calc(15px*var(--u))}
+#cast .ct.solo{flex:0 0 calc(136px*var(--u));width:calc(136px*var(--u));border-radius:calc(19px*var(--u))}
+#cast.quad .ct{flex:0 0 calc(91px*var(--u));width:calc(91px*var(--u));border-radius:calc(14px*var(--u))}
+#cast.crowded{gap:calc(4px*var(--u))}
+#cast.crowded .ct{flex:0 0 calc(65px*var(--u));width:calc(65px*var(--u));border-radius:calc(12px*var(--u))}
+#cast.crowded .vs{font-size:calc(16px*var(--u));padding:0 calc(2px*var(--u))}
+#cast .ct img{transform:scale(1)}
+#cast .ct.dead{border-color:#283e82;box-shadow:0 4px 10px rgba(0,0,0,.5)}
+#cast .ct.dead img{filter:brightness(.72) saturate(.85)}
+#cast .ct.dead::before{display:none;background:transparent}
+#cast .ct.dead::after{font-size:calc(84px*var(--u));color:#ff1e38;text-shadow:0 0 12px rgba(255,0,30,.95),0 3px 6px #000,-2px -2px 0 #450a0a,2px 2px 0 #450a0a}
+#cast.quad .ct.dead::after{font-size:calc(74px*var(--u))}
+#cast.crowded .ct.dead::after{font-size:calc(58px*var(--u))}
+#brand-strip{width:100%;background:#ffffff;box-shadow:0 3px 12px rgba(0,0,0,.4);padding:calc(3px*var(--u)) calc(12px*var(--u));border-radius:calc(8px*var(--u));justify-content:space-between}
+#channel-title{flex:0 1 auto;max-width:72%;background:transparent;padding:0;border-radius:0;box-shadow:none;font-size:calc(16px*var(--u));line-height:1}
+.star-pill{flex:0 0 auto;min-width:20%;height:calc(27px*var(--u));padding:calc(2px*var(--u)) calc(12px*var(--u));font-size:calc(14px*var(--u));border-radius:calc(999px*var(--u));background:var(--pill);color:var(--pill-ink);border:2px solid var(--gold)}
+.lvl-card.trio-boss{border-color:#dc2626}
+.lvl-tag.trio-boss{background:#dc2626;color:#fff}
+.lvl-card.trio-boss .lvl-btn{background:#b91c1c}
+.lvl-card.emerald-twist{border-color:#2563eb}
+.lvl-tag.emerald-twist{background:#1d4ed8;color:#fff}
+.lvl-btn-row{display:flex;gap:8px;width:100%}
+.lvl-btn-row .lvl-btn{flex:1}
+.lvl-btn.auto-btn{background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;border:1px solid #60a5fa}
+.autoplay-opt{width:100%;margin-bottom:10px;padding:10px 14px;border-radius:12px;border:2px solid #334155;background:#0f172a;color:#e2e8f0;font-weight:900;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.autoplay-opt.on{border-color:#10b981;background:#064e3b;color:#ecfdf5;box-shadow:0 0 14px rgba(16,185,129,.45)}
+.ext-auto-btn{padding:6px 10px;border-radius:8px;border:1.5px solid #475569;background:#1e293b;color:#f8fafc;font-weight:800;font-size:12px;cursor:pointer}
+.ext-auto-btn.on{border-color:#10b981;background:#065f46;color:#ecfdf5}
+</style>
+</head><body>
+<!-- FLOATING CREATOR & RECORDING DOCK (COMPLETELY OUTSIDE GAME FRAME & VIDEO) -->
+<div id="ext-creator-dock">
+  <div class="ext-res-wrap">
+    <select id="sel-rec-res" class="ext-res-sel" title="Choose Recording Resolution" aria-label="Recording Resolution">
+      <option value="1080p" selected>1080p FHD (YouTube)</option>
+      <option value="2k">2K QHD (1440p Shorts)</option>
+      <option value="4k">4K UHD (2160p Shorts)</option>
+    </select>
+  </div>
+  <button id="btn-record" class="ext-rec-btn" title="Click to Start/Stop 60FPS Video Recording">
+    <span class="ext-rec-dot"></span>
+    <span class="rec-label">REC 1080p</span>
+    <span class="rec-timer" id="rec-timer" hidden>00:00</span>
+  </button>
+  <button id="ext-autoplay-btn" class="ext-auto-btn" type="button" aria-pressed="false" title="Toggle Auto-Play Mode">🤖 Auto: OFF</button>
+  <button id="btn-fullscreen" class="ext-fs-btn" title="Toggle Studio / Fullscreen View">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+    <span>Studio View</span>
+  </button>
+</div>
+<div id="frame">
+<div id="top"><div id="top-row"><div id="cast" aria-label="Characters in this level"></div><div id="top-actions"><button class="pill ib" id="sd" aria-label="Sound" aria-pressed="true"></button><button class="pill ib" id="mn" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><button class="pill ib" id="rs" aria-label="Restart level"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 3-6.2M4 4v5h5"/></svg></button></div></div><div id="brand-strip"><div id="channel-title"><span class="cn-main">Global Games </span><span class="cn-sk">SK</span></div><div class="pill star-pill">★ <b id="sc">0</b>/<span id="tot"></span></div></div></div>
+<div id="stage"><canvas id="c" aria-label="Tom &amp; Cherry Maze game board"></canvas><div id="toast" role="status" aria-live="polite"></div>
+<div id="pad"><button id="u" aria-label="Up" style="grid-area:1/2">▲</button><button id="l" aria-label="Left" style="grid-area:2/1">◀</button><button id="d" aria-label="Down" style="grid-area:3/2">▼</button><button id="r" aria-label="Right" style="grid-area:2/3">▶</button></div></div>
+<div id="fly-layer" style="position:absolute;inset:0;pointer-events:none;z-index:25;overflow:hidden"></div>
+
+<!-- MODAL OVERLAY: RATIO -> LEVEL SELECT -> GAMEPLAY -->
+<div id="ov"><div id="card"><img id="face" alt="Tom"><h1 id="ot">Tom &amp; Cherry Arcade Maze</h1><div id="st"></div><p id="om"></p>
+
+<!-- STEP 1: RATIO SELECT -->
+<div id="step-ratio">
+  <fieldset id="rt"><legend>Screen Aspect Ratio</legend>
+    <label><input type="radio" name="ra" value="9:16" checked><span><i class="p"></i>Portrait 9:16 (Shorts)</span></label>
+    <label><input type="radio" name="ra" value="16:9"><span><i class="l"></i>Landscape 16:9</span></label>
+  </fieldset>
+  <button id="btn-to-levels" class="main-btn">Select Level ➔</button>
+</div>
+
+<!-- STEP 2: LEVEL SELECT -->
+<div id="step-levels" hidden>
+  <button id="btn-autoplay-opt" class="autoplay-opt" type="button" aria-pressed="false">🤖 Auto-Play Bot: OFF (Manual Play)</button>
+  <div class="level-list">
+    <div class="lvl-card" data-lvl="0">
+      <div class="lvl-hdr"><span class="lvl-tag solo">Solo (1 Hero)</span><span class="lvl-num">Level 1</span></div>
+      <div class="lvl-title">Solo Escape</div>
+      <div class="lvl-desc">Tom solo challenge. Collect 10 stars, dodge spinning saw blades &amp; laser barriers.</div>
+      <button class="lvl-btn" data-lvl="0">Play Level 1 ▶</button>
+    </div>
+    <div class="lvl-card coop" data-lvl="1">
+      <div class="lvl-hdr"><span class="lvl-tag coop">Co-op Duo</span><span class="lvl-num">Level 2</span></div>
+      <div class="lvl-title">Tom &amp; Cherry</div>
+      <div class="lvl-desc">Cooperative switch maze! Press wall buttons to blow open secret gates &amp; beat the saw-laser gauntlet.</div>
+      <button class="lvl-btn" data-lvl="1">Play Level 2 ▶</button>
+    </div>
+    <div class="lvl-card master" data-lvl="2">
+      <div class="lvl-hdr"><span class="lvl-tag master">Master Co-op</span><span class="lvl-num">Level 3</span></div>
+      <div class="lvl-title">Matrix Laser Gauntlet</div>
+      <div class="lvl-desc">Ultimate dual-hero gauntlet! Titanium maze, multi-switch vault barriers &amp; timing lasers.</div>
+      <button class="lvl-btn" data-lvl="2">Play Level 3 ▶</button>
+    </div>
+    <div class="lvl-card trio" data-lvl="3">
+      <div class="lvl-hdr"><span class="lvl-tag trio">Trio Co-op (3 Heroes)</span><span class="lvl-num">Level 4</span></div>
+      <div class="lvl-title">Tom &amp; Friends Trio</div>
+      <div class="lvl-desc">Tom, Cherry &amp; Bulldog! 3-way switch network unlocking the central corridor to freedom.</div>
+      <button class="lvl-btn" data-lvl="3">Play Level 4 ▶</button>
+    </div>
+    <div class="lvl-card boss" data-lvl="4">
+      <div class="lvl-hdr"><span class="lvl-tag boss">Boss Gauntlet</span><span class="lvl-num">Level 5</span></div>
+      <div class="lvl-title">Buffalo Boss Showdown</div>
+      <div class="lvl-desc">Heroes vs Buffalo! Overload horn shields, stun Buffalo with bombs, and breach the core vault!</div>
+      <button class="lvl-btn" data-lvl="4">Play Level 5 ▶</button>
+    </div>
+    <div class="lvl-card trio-boss" data-lvl="5">
+      <div class="lvl-hdr"><span class="lvl-tag trio-boss">Villain Trio</span><span class="lvl-num">Level 6</span></div>
+      <div class="lvl-title">Villain Trio Showdown</div>
+      <div class="lvl-desc">Tom, Cherry &amp; Bulldog vs Buffalo, Black Fox &amp; Red Fox! Outsmart all three villains and escape!</div>
+      <button class="lvl-btn" data-lvl="5">Play Level 6 ▶</button>
+    </div>
+    <div class="lvl-card coop" data-lvl="6">
+      <div class="lvl-hdr"><span class="lvl-tag coop">Tom &amp; Cherry Duo</span><span class="lvl-num">Level 7</span></div>
+      <div class="lvl-title">Level 7: Matrix Blitz</div>
+      <div class="lvl-desc">Tom &amp; Cherry only! Simple ~1-minute challenge with spaced side-route shields, bombs, switches &amp; black spikes.</div>
+      <button class="lvl-btn" data-lvl="6">Play Level 7 ▶</button>
+    </div>
+    <div class="lvl-card emerald-twist" data-lvl="7">
+      <div class="lvl-hdr"><span class="lvl-tag emerald-twist">Blue Trio Twist (&lt;50s)</span><span class="lvl-num">Level 8</span></div>
+      <div class="lvl-title">Level 8: Blue Trio Twist</div>
+      <div class="lvl-desc">Tom, Cherry &amp; Bulldog! Blue 1-layer inner maze, betrayal gate twist, backtrack shield/bomb &amp; exit under 50s.</div>
+      <div class="lvl-btn-row">
+        <button class="lvl-btn" data-lvl="7">Play Manual ▶</button>
+        <button class="lvl-btn auto-btn" data-lvl="7" data-auto="1">🤖 Auto-Play (&lt;50s)</button>
+      </div>
+    </div>
+    <div class="lvl-card emerald-twist" data-lvl="8">
+      <div class="lvl-hdr"><span class="lvl-tag trio-boss">Villain Ambush (Auto)</span><span class="lvl-num">Level 9</span></div>
+      <div class="lvl-title">Level 9: Foxes Ambush Co-Op</div>
+      <div class="lvl-desc">Fully automated team battle! Tom, Cherry &amp; Bulldog move in parallel, shield-protect each other, fight Red Fox &amp; Black Fox, and escape under 50s!</div>
+      <button class="lvl-btn auto-btn" data-lvl="8">🤖 Play Automated Level 9 ▶</button>
+    </div>
+    <div class="lvl-card trio-boss" data-lvl="9">
+      <div class="lvl-hdr"><span class="lvl-tag trio-boss">3 Villains Finale (Auto)</span><span class="lvl-num">Level 10</span></div>
+      <div class="lvl-title">Level 10: Trio Finale Gauntlet</div>
+      <div class="lvl-desc">Grand Blue Finale! Tom, Cherry &amp; Bulldog rescue each other, survive a switch betrayal trap, duel Red Fox, Black Fox &amp; Buffalo 1v1, and escape in 40–50s!</div>
+      <button class="lvl-btn auto-btn" data-lvl="9">🤖 Play Automated Level 10 ▶</button>
+    </div>
+    <div class="lvl-card emerald-twist" data-lvl="10">
+      <div class="lvl-hdr"><span class="lvl-tag trio-boss">Conditional + Sky Exit (Auto)</span><span class="lvl-num">Level 11</span></div>
+      <div class="lvl-title">Level 11: Skyward Logic Protocol</div>
+      <div class="lvl-desc">Conditional Co-Op Puzzle! Disable laser, cross spinning saw with shield, rescue Cherry from a left betrayal trap, beat all 3 villains 1v1, and fly one-by-one into top green ticks!</div>
+      <button class="lvl-btn auto-btn" data-lvl="10">🤖 Play Automated Level 11 ▶</button>
+    </div>
+    <div class="lvl-card trio-boss" data-lvl="11">
+      <div class="lvl-hdr"><span class="lvl-tag trio-boss">Sacrifice &amp; Revenge (Auto)</span><span class="lvl-num">Level 12</span></div>
+      <div class="lvl-title">Level 12: Sacrifice &amp; Revenge</div>
+      <div class="lvl-desc">Dramatic Finale! Cherry shows sad reaction when blocked from a star, Bulldog sacrifices himself fighting Black Fox (red cross + crying face), and survivors Cherry &amp; Tom fly into green ticks!</div>
+      <button class="lvl-btn auto-btn" data-lvl="11">🤖 Play Automated Level 12 ▶</button>
+    </div>
+    <div class="lvl-card trio-boss" data-lvl="12">
+      <div class="lvl-hdr"><span class="lvl-tag trio-boss">Swift Sacrifice &lt;30s (Auto)</span><span class="lvl-num">Level 13</span></div>
+      <div class="lvl-title">Level 13: Swift Sacrifice (&lt;30s)</div>
+      <div class="lvl-desc">Fast &lt;30s 4K Shorts! Cherry reacts sad at a locked star, sacrifices herself heroically against Black Fox (red cross + sad face), Tom avenges her, and survivors Tom &amp; Bulldog fly into green ticks!</div>
+      <button class="lvl-btn auto-btn" data-lvl="12">🤖 Play Automated Level 13 ▶</button>
+    </div>
+    <div class="lvl-card trio-boss" data-lvl="13">
+      <div class="lvl-hdr"><span class="lvl-tag trio-boss">Bulldog Stand 32s (Auto)</span><span class="lvl-num">Level 14</span></div>
+      <div class="lvl-title">Level 14: Bulldog's Stand (32s)</div>
+      <div class="lvl-desc">Smooth 6×10 32s Shorts! Reduced natural pace, Bulldog sacrifices himself against Black Fox with a big crying death-flight up to the Red Cross, and survivors Cherry &amp; Tom fly into green ticks!</div>
+      <button class="lvl-btn auto-btn" data-lvl="13">🤖 Play Automated Level 14 ▶</button>
+    </div>
+  </div>
+  <button id="btn-back-ratio" class="sub-btn">← Back to Screen Ratio</button>
+</div>
+
+<!-- STEP 3: RESULTS (GAMEOVER ONLY) -->
+<div id="step-results" hidden>
+  <button id="btn-retry" class="main-btn">Try Again</button>
+  <button id="btn-choose-level" class="sub-btn">Choose Level</button>
+</div>
+
+</div></div>
+
+<!-- VIDEO EXPORT PREVIEW MODAL -->
+<div id="rec-modal" hidden>
+  <div id="rec-card">
+    <div class="rec-badge" id="rec-badge">🎬 1080P 60FPS MP4 VIDEO READY</div>
+    <div class="rec-video-box">
+      <video id="rec-video-preview" controls autoplay loop playsinline></video>
+    </div>
+    <div class="rec-specs-grid">
+      <div class="spec-item"><span class="s-label">Resolution</span><span class="s-val" id="spec-res">1080 × 1920 (9:16 Shorts)</span></div>
+      <div class="spec-item"><span class="s-label">Format</span><span class="s-val ready" id="spec-fmt">MP4 (H.264 / AAC)</span></div>
+      <div class="spec-item"><span class="s-label">Audio</span><span class="s-val">Stereo SFX + Music</span></div>
+      <div class="spec-item"><span class="s-label">Frame</span><span class="s-val ready">Full Frame + Border</span></div>
+    </div>
+    <div class="rec-btn-row">
+      <a id="btn-rec-download" class="main-btn" download="Tom_Cherry_Maze_Gameplay_1080p.mp4">⬇️ Download Clear MP4 Video</a>
+      <button id="btn-rec-close" class="sub-btn">Close Preview</button>
+    </div>
+  </div>
+</div>
+
+</div>
+<script src="tc_assets.js"></script>
+<script src="tc_levels.js"></script>
+<script src="audio/audio-data.js"></script>
+<script src="audio/tc-audio-data.js"></script>
+<script src="audio/audio.js"></script>
+<script src="vfx/vfx.js"></script>
+<script src="tc_game.js"></script></body></html>

@@ -84,6 +84,32 @@ const GameAudio = (() => {
   function musicStop() { stopLoops(); }
   function duck() {}
   function toggle() { on = !on; try { localStorage.setItem("sm_snd", on ? "1" : "0"); } catch (e) {} if (master) master.gain.setTargetAtTime(on ? 1 : 0, ac.currentTime, .05); return on; }
+  function getMediaStream() {
+    const a = ctx();
+    if (!a) return null;
+    if (!a._recDest) {
+      a._recDest = a.createMediaStreamDestination();
+      // Add DelayNode (0.45s) between master and recording destination to synchronize Web Audio with canvas captureStream encoder latency
+      try {
+        const recDelay = a.createDelay(1.0);
+        recDelay.delayTime.value = 0.45;
+        master.connect(recDelay);
+        recDelay.connect(a._recDest);
+      } catch (e) {
+        master.connect(a._recDest);
+      }
+      // Continuous silent clock source so the MP4 muxer always receives audio packets
+      try {
+        const osc = a.createOscillator();
+        const g = a.createGain();
+        g.gain.value = 0.000005; // Inaudible keep-alive clock
+        osc.connect(g);
+        g.connect(a._recDest);
+        osc.start();
+      } catch (e) {}
+    }
+    return a._recDest.stream;
+  }
   document.addEventListener("visibilitychange", () => { if (ac) { if (document.hidden) ac.suspend(); else ac.resume(); } });
-  return { begin, play, coin, frame, musicStart, musicStop, duck, toggle, stopLoops, stopWin, get on() { return on; }, get combo() { return combo.n + 1; }, get buf() { return buf; } };
+  return { begin, play, coin, frame, musicStart, musicStop, duck, toggle, stopLoops, stopWin, getMediaStream, getAudioContext: () => ac, get on() { return on; }, get combo() { return combo.n + 1; }, get buf() { return buf; } };
 })();
